@@ -439,6 +439,16 @@ npm install
 
 Проект создан в образовательных целях.
 
+## 📚 Документация
+
+Дополнительная документация по различным аспектам проекта:
+
+- **[JACKETT_SETUP.md](JACKETT_SETUP.md)** — Настройка Jackett для русских трекеров
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** — Расширенное руководство по устранению проблем
+- **[CACHING.md](CACHING.md)** — Документация по кэшированию
+- **[PARSERS.md](PARSERS.md)** — Документация по парсерам трекеров
+- **[QWEN.md](QWEN.md)** — Контекст проекта для Qwen Code
+
 ## 🤝 Вклад в проект
 
 1. Fork репозиторий
@@ -450,9 +460,8 @@ npm install
 ## 📞 Контакты
 
 - **Issues:** GitHub Issues
-- **Документация:** [JACKETT_SETUP.md](JACKETT_SETUP.md), [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+- **Документация:** См. раздел [📚 Документация](#-документация)
 
 ---
 
-**BulbashTV** © 2024
-# BulbashTV
+**BulbashTV** © 2024-2025
