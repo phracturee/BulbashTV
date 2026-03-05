@@ -1,0 +1,18 @@
+# Configuration file for BulbashTV
+# Copy this file to config.py and fill in your API key
+
+# TMDB API Configuration
+# Get your API key from: https://www.themoviedb.org/settings/api
+TMDB_API_KEY = "your_tmdb_api_key_here"
+
+# SOCKS5 Proxy Configuration
+PROXY_HOST = "146.103.109.37"
+PROXY_PORT = 1080
+PROXY_USERNAME = "vm-003"
+PROXY_PASSWORD = "Zw7q1yecjHDcQB6gWM"
+
+# Custom DNS
+CUSTOM_DNS = "9.9.9.9"
+
+# TMDB API Base URL
+TMDB_BASE_URL = "https://api.themoviedb.org/3"

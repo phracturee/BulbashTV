@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Страница не найдена</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body class="error-page">
+    <nav class="sidebar">
+        <ul>
+            <li><a href="/search"><i class="fas fa-search"></i></a></li>
+            <li><a href="/"><i class="fas fa-home"></i></a></li>
+            <li><a href="/favorites"><i class="fas fa-star"></i></a></li>
+            <li><a href="/history"><i class="fas fa-history"></i></a></li>
+            <li><a href="#"><i class="fas fa-cog"></i></a></li>
+        </ul>
+    </nav>
+
+    <main class="error-main">
+        <div class="error-content">
+            <i class="fas fa-film" style="font-size: 5rem; color: var(--accent); margin-bottom: 30px;"></i>
+            <h1>404</h1>
+            <p>{{ message or 'Страница не найдена' }}</p>
+            <a href="/" class="btn-primary" style="margin-top: 30px; display: inline-flex; align-items: center; gap: 10px; padding: 12px 30px; text-decoration: none;">
+                <i class="fas fa-arrow-left"></i> На главную
+            </a>
+        </div>
+    </main>
+</body>
+</html>

@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BulbashTV</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body>
+    <nav class="sidebar">
+        <ul>
+            <li><a href="/search"><i class="fas fa-search"></i></a></li>
+            <li><a href="/" class="active"><i class="fas fa-home"></i></a></li>
+            <li><a href="/favorites"><i class="fas fa-star"></i></a></li>
+            <li><a href="/history"><i class="fas fa-history"></i></a></li>
+            <li><a href="#"><i class="fas fa-cog"></i></a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero-section">
+            {% if trending and trending[0].backdrop_path %}
+            <div class="hero-background" style="background-image: url('{{ trending[0].backdrop_path }}');">
+                <div class="hero-overlay"></div>
+            </div>
+            {% else %}
+            <div class="hero-background" style="background-image: url('{{ url_for('static', filename='img/background.jpg') }}');">
+                <div class="hero-overlay"></div>
+            </div>
+            {% endif %}
+            
+            <div class="hero-content">
+                {% if trending %}
+                <div class="hero-info">
+                    <span class="media-type">{{ trending[0].media_type }}</span>
+                    <h1><a href="{% if trending[0].media_type == 'Фильм' %}/movie/{{ trending[0].id }}{% else %}/tv/{{ trending[0].id }}{% endif %}" style="color: inherit; text-decoration: none;">{{ trending[0].title }}</a></h1>
+                    <div class="meta">
+                        <span class="year">{{ trending[0].release_date }}</span>
+                        <span class="rating"><i class="fas fa-star"></i> {{ trending[0].vote_average }}</span>
+                    </div>
+                    <p class="overview">{{ trending[0].overview[:200] }}{% if trending[0].overview|length > 200 %}...{% endif %}</p>
+                    <div class="actions">
+                        <a href="{% if trending[0].media_type == 'Фильм' %}/movie/{{ trending[0].id }}{% else %}/tv/{{ trending[0].id }}{% endif %}" class="btn-primary" style="text-decoration: none;"><i class="fas fa-play"></i> Смотреть</a>
+                        <button class="btn-secondary {% if trending[0].is_favorite %}active{% endif %}" onclick="toggleFavorite({{ trending[0].id }})" title="{% if trending[0].is_favorite %}В избранном{% else %}Добавить в избранное{% endif %}">
+                            <i class="{% if trending[0].is_favorite %}fas{% else %}far{% endif %} fa-heart"></i>
+                        </button>
+                        <button class="btn-secondary {% if trending[0].is_watched %}active{% endif %}" onclick="toggleWatched({{ trending[0].id }})" title="{% if trending[0].is_watched %}Просмотрено{% else %}Отметить как просмотренное{% endif %}">
+                            <i class="{% if trending[0].is_watched %}fas{% else %}far{% endif %} fa-eye{% if not trending[0].is_watched %}-slash{% endif %}"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                {% else %}
+                <div class="hero-info">
+                    <h1>BulbashTV</h1>
+                    <p class="overview">Добро пожаловать в мир кино и сериалов</p>
+                    <div class="actions">
+                        <button class="btn-primary"><i class="fas fa-play"></i> Начать</button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- Trending Section -->
+        <section class="content-section">
+            <div class="section-header">
+                <h3><a href="/trending" style="color: inherit; text-decoration: none;"><i class="fas fa-fire"></i> В тренде</a></h3>
+                <a href="/trending" class="view-more">Смотреть все <i class="fas fa-arrow-right"></i></a>
+            </div>
+            <div class="content-scroll">
+                {% for item in trending %}
+                <a href="{% if item.media_type == 'Фильм' %}/movie/{{ item.id }}{% else %}/tv/{{ item.id }}{% endif %}" class="content-card">
+                    <div class="card-image">
+                        {% if item.backdrop_path %}
+                        <img src="{{ item.backdrop_path }}" alt="{{ item.title }}">
+                        {% else %}
+                        <img src="{{ item.poster_path }}" alt="{{ item.title }}">
+                        {% endif %}
+                        <span class="media-badge">{{ item.media_type }}</span>
+                        <button class="favorite-btn {% if item.is_favorite %}active{% endif %}" onclick="event.preventDefault(); toggleFavorite({{ item.id }})" title="{% if item.is_favorite %}В избранном{% else %}В избранное{% endif %}">
+                            <i class="{% if item.is_favorite %}fas{% else %}far{% endif %} fa-heart"></i>
+                        </button>
+                        <button class="watched-btn {% if item.is_watched %}active{% endif %}" onclick="event.preventDefault(); toggleWatched({{ item.id }})" title="{% if item.is_watched %}Просмотрено{% else %}Отметить как просмотренное{% endif %}">
+                            <i class="{% if item.is_watched %}fas{% else %}far{% endif %} fa-eye{% if not item.is_watched %}-slash{% endif %}"></i>
+                        </button>
+                    </div>
+                    <h4>{{ item.title }}</h4>
+                    <div class="card-meta">
+                        <span>{{ item.release_date }}</span>
+                        <span><i class="fas fa-star"></i> {{ item.vote_average }}</span>
+                    </div>
+                </a>
+                {% endfor %}
+                <a href="/trending" class="content-card load-more">
+                    <div class="load-more-btn">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Еще</span>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <!-- Movies Section -->
+        <section class="content-section">
+            <div class="section-header">
+                <h3><a href="/movies" style="color: inherit; text-decoration: none;"><i class="fas fa-film"></i> Фильмы</a></h3>
+                <a href="/movies" class="view-more">Смотреть все <i class="fas fa-arrow-right"></i></a>
+            </div>
+            <div class="content-scroll">
+                {% for movie in movies %}
+                <a href="/movie/{{ movie.id }}" class="content-card vertical">
+                    <div class="card-image">
+                        <img src="{{ movie.poster_path }}" alt="{{ movie.title }}">
+                        <button class="watched-btn {% if movie.is_watched %}active{% endif %}" onclick="event.preventDefault(); toggleWatched({{ movie.id }})" title="{% if movie.is_watched %}Просмотрено{% else %}Отметить как просмотренное{% endif %}">
+                            <i class="{% if movie.is_watched %}fas{% else %}far{% endif %} fa-eye{% if not movie.is_watched %}-slash{% endif %}"></i>
+                        </button>
+                        <button class="favorite-btn {% if movie.is_favorite %}active{% endif %}" onclick="event.preventDefault(); toggleFavorite({{ movie.id }})" title="{% if movie.is_favorite %}В избранном{% else %}В избранное{% endif %}">
+                            <i class="{% if movie.is_favorite %}fas{% else %}far{% endif %} fa-heart"></i>
+                        </button>
+                    </div>
+                    <h4>{{ movie.title }}</h4>
+                    <div class="card-meta">
+                        <span>{{ movie.release_date }}</span>
+                        <span><i class="fas fa-star"></i> {{ movie.vote_average }}</span>
+                    </div>
+                </a>
+                {% endfor %}
+                <a href="/movies" class="content-card vertical load-more">
+                    <div class="load-more-btn">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Еще</span>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <!-- TV Shows Section -->
+        <section class="content-section">
+            <div class="section-header">
+                <h3><a href="/tv-shows" style="color: inherit; text-decoration: none;"><i class="fas fa-tv"></i> Сериалы</a></h3>
+                <a href="/tv-shows" class="view-more">Смотреть все <i class="fas fa-arrow-right"></i></a>
+            </div>
+            <div class="content-scroll">
+                {% for show in tv_shows %}
+                <a href="/tv/{{ show.id }}" class="content-card vertical">
+                    <div class="card-image">
+                        <img src="{{ show.poster_path }}" alt="{{ show.title }}">
+                        <button class="watched-btn {% if show.is_watched %}active{% endif %}" onclick="event.preventDefault(); toggleWatched({{ show.id }})" title="{% if show.is_watched %}Просмотрено{% else %}Отметить как просмотренное{% endif %}">
+                            <i class="{% if show.is_watched %}fas{% else %}far{% endif %} fa-eye{% if not show.is_watched %}-slash{% endif %}"></i>
+                        </button>
+                        <button class="favorite-btn {% if show.is_favorite %}active{% endif %}" onclick="event.preventDefault(); toggleFavorite({{ show.id }})" title="{% if show.is_favorite %}В избранном{% else %}В избранное{% endif %}">
+                            <i class="{% if show.is_favorite %}fas{% else %}far{% endif %} fa-heart"></i>
+                        </button>
+                    </div>
+                    <h4>{{ show.title }}</h4>
+                    <div class="card-meta">
+                        <span>{{ show.first_air_date }}</span>
+                        <span><i class="fas fa-star"></i> {{ show.vote_average }}</span>
+                    </div>
+                </a>
+                {% endfor %}
+                <a href="/tv-shows" class="content-card vertical load-more">
+                    <div class="load-more-btn">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Еще</span>
+                    </div>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Store items data for JavaScript access
+        const itemsData = {
+            {% for item in trending %}
+            {{ item.id }}: {
+                id: {{ item.id }},
+                title: "{{ item.title|replace('"', '\\"') }}",
+                poster_path: "{{ item.poster_path or '' }}",
+                media_type: "{{ item.media_type }}",
+                vote_average: "{{ item.vote_average }}",
+                release_date: "{{ item.release_date }}",
+                overview: "{{ item.overview|replace('"', '\\"')|replace('\n', ' ')|replace('\r', ' ') }}",
+                url: "{{ item.url }}",
+                is_watched: {{ 'true' if item.is_watched else 'false' }}
+            },
+            {% endfor %}
+            {% for movie in movies %}
+            {{ movie.id }}: {
+                id: {{ movie.id }},
+                title: "{{ movie.title|replace('"', '\\"') }}",
+                poster_path: "{{ movie.poster_path or '' }}",
+                media_type: "Фильм",
+                vote_average: "{{ movie.vote_average }}",
+                release_date: "{{ movie.release_date }}",
+                overview: "{{ movie.overview|replace('"', '\\"')|replace('\n', ' ')|replace('\r', ' ') }}",
+                url: "{{ movie.url }}",
+                is_watched: {{ 'true' if movie.is_watched else 'false' }}
+            },
+            {% endfor %}
+            {% for show in tv_shows %}
+            {{ show.id }}: {
+                id: {{ show.id }},
+                title: "{{ show.title|replace('"', '\\"') }}",
+                poster_path: "{{ show.poster_path or '' }}",
+                media_type: "Сериал",
+                vote_average: "{{ show.vote_average }}",
+                release_date: "{{ show.first_air_date }}",
+                overview: "{{ show.overview|replace('"', '\\"')|replace('\n', ' ')|replace('\r', ' ') }}",
+                url: "{{ show.url }}",
+                is_watched: {{ 'true' if show.is_watched else 'false' }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        };
+
+        let currentItemId = null;
+        
+        function toggleFavorite(id) {
+            const item = itemsData[id];
+            if (!item) return;
+            
+            currentItemId = id;
+            
+            // Check if already in favorites
+            fetch(`/api/favorites/check/${id}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.is_favorite) {
+                    // Show folder selection to remove from specific folder
+                    showFolderSelectionModal(id, data.folders, true);
+                } else {
+                    // Show folder selection to add
+                    showFolderSelectionModal(id, [], false);
+                }
+            });
+        }
+        
+        function showFolderSelectionModal(itemId, currentFolders, isRemove) {
+            // Remove existing modal
+            const existingModal = document.getElementById('folderSelectionModal');
+            if (existingModal) existingModal.remove();
+            
+            // Fetch all folders
+            fetch('/api/favorites/folders')
+            .then(r => r.json())
+            .then(data => {
+                const modal = document.createElement('div');
+                modal.id = 'folderSelectionModal';
+                modal.className = 'modal folder-selection-modal';
+                
+                let foldersHtml = '';
+                data.folders.forEach(folder => {
+                    // Skip "watched" folder - it's handled separately
+                    if (folder.id === 'watched') return;
+                    
+                    const isInFolder = currentFolders.includes(folder.id);
+                    foldersHtml += `
+                        <div class="folder-option ${isInFolder ? 'in-folder' : ''}" onclick="${isRemove && isInFolder ? `removeFromFolder('${folder.id}', ${itemId})` : `addToFolder('${folder.id}', ${itemId})`}">
+                            <i class="fas fa-folder${isInFolder ? '' : '-open'}"></i>
+                            <div class="folder-option-info">
+                                <h4>${folder.name}</h4>
+                                <span>${folder.item_count} элементов</span>
+                            </div>
+                            ${isInFolder ? '<i class="fas fa-check" style="color: var(--accent);"></i>' : ''}
+                        </div>
+                    `;
+                });
+
+                // Add "Watched" button separately
+                const isWatched = currentFolders.includes('watched');
+                foldersHtml += `
+                    <div class="folder-option watched-option ${isWatched ? 'in-folder' : ''}" onclick="toggleWatched(${itemId}); closeFolderModal();">
+                        <i class="fas fa-eye${isWatched ? '' : '-slash'}"></i>
+                        <div class="folder-option-info">
+                            <h4>Просмотренное</h4>
+                            <span>${isWatched ? 'Отметить как непросмотренное' : 'Отметить как просмотренное'}</span>
+                        </div>
+                        ${isWatched ? '<i class="fas fa-check" style="color: #4CAF50;"></i>' : ''}
+                    </div>
+                `;
+                
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <h3>${isRemove ? 'Удалить из папки' : 'Добавить в избранное'}</h3>
+                        <div class="folder-list">
+                            ${foldersHtml}
+                            <div class="folder-option create-new-folder" onclick="createFolderAndAdd(${itemId})">
+                                <i class="fas fa-plus-circle"></i>
+                                <div class="folder-option-info">
+                                    <h4>Создать новую папку</h4>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-buttons">
+                            <button onclick="closeFolderModal()" class="btn-secondary">Отмена</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Close on outside click
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) closeFolderModal();
+                });
+            });
+        }
+        
+        function closeFolderModal() {
+            const modal = document.getElementById('folderSelectionModal');
+            if (modal) modal.remove();
+        }
+        
+        function addToFolder(folderId, itemId) {
+            const item = itemsData[itemId];
+            if (!item) return;
+            
+            fetch('/api/favorites/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({...item, folder_id: folderId})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    updateHeartIcon(itemId, true);
+                    showNotification(`Добавлено в "${data.folder_name}"!`, 'success');
+                    closeFolderModal();
+                } else {
+                    showNotification(data.message || 'Ошибка', 'error');
+                }
+            });
+        }
+        
+        function removeFromFolder(folderId, itemId) {
+            fetch(`/api/favorites/remove/${itemId}?folder_id=${folderId}`, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    if (!data.is_favorite) {
+                        updateHeartIcon(itemId, false);
+                    }
+                    showNotification('Удалено из папки', 'info');
+                    closeFolderModal();
+                }
+            });
+        }
+        
+        function createFolderAndAdd(itemId) {
+            // Create inline modal for folder name input
+            const existingInput = document.getElementById('inlineFolderInput');
+            if (existingInput) existingInput.remove();
+            
+            const inputDiv = document.createElement('div');
+            inputDiv.id = 'inlineFolderInput';
+            inputDiv.className = 'inline-folder-input';
+            inputDiv.innerHTML = `
+                <div class="folder-input-content">
+                    <input type="text" id="newFolderNameInput" placeholder="Название папки" maxlength="50">
+                    <div class="folder-input-buttons">
+                        <button onclick="cancelFolderInput()" class="btn-secondary">Отмена</button>
+                        <button onclick="submitNewFolder(${itemId})" class="btn-primary">Создать</button>
+                    </div>
+                </div>
+            `;
+            
+            // Insert after the "Create new folder" option
+            const createOption = document.querySelector('.create-new-folder');
+            if (createOption) {
+                createOption.after(inputDiv);
+            }
+            
+            document.getElementById('newFolderNameInput').focus();
+            
+            // Submit on Enter
+            document.getElementById('newFolderNameInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') submitNewFolder(itemId);
+            });
+        }
+        
+        function cancelFolderInput() {
+            const inputDiv = document.getElementById('inlineFolderInput');
+            if (inputDiv) inputDiv.remove();
+        }
+        
+        function submitNewFolder(itemId) {
+            const nameInput = document.getElementById('newFolderNameInput');
+            const name = nameInput.value.trim();
+            
+            if (!name) {
+                showNotification('Введите название папки', 'error');
+                return;
+            }
+            
+            fetch('/api/favorites/folders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    cancelFolderInput();
+                    addToFolder(data.folder_id, itemId);
+                } else {
+                    showNotification(data.message || 'Ошибка', 'error');
+                }
+            });
+        }
+        
+        function updateHeartIcon(id, isFavorite) {
+            // Find all favorite buttons for this item
+            const buttons = document.querySelectorAll(`button[onclick*="toggleFavorite(${id})"]`);
+            console.log('updateHeartIcon:', id, isFavorite, 'found', buttons.length, 'buttons');
+            
+            buttons.forEach(btn => {
+                const icon = btn.querySelector('i');
+                if (isFavorite) {
+                    btn.classList.add('active');
+                    if (icon) {
+                        icon.classList.remove('far');
+                        icon.classList.add('fas');
+                    }
+                    btn.title = 'В избранном';
+                } else {
+                    btn.classList.remove('active');
+                    if (icon) {
+                        icon.classList.remove('fas');
+                        icon.classList.add('far');
+                    }
+                    btn.title = 'В избранное';
+                }
+            });
+        }
+
+        function updateWatchedIcon(id, isWatched) {
+            // Find all watched buttons for this item
+            const buttons = document.querySelectorAll(`button[onclick*="toggleWatched(${id})"]`);
+            console.log('updateWatchedIcon:', id, isWatched, 'found', buttons.length, 'buttons');
+            
+            buttons.forEach(btn => {
+                const icon = btn.querySelector('i');
+                if (isWatched) {
+                    btn.classList.add('active');
+                    if (icon) {
+                        icon.classList.remove('far', 'fa-eye-slash');
+                        icon.classList.add('fas', 'fa-eye');
+                    }
+                    btn.title = 'Просмотрено';
+                } else {
+                    btn.classList.remove('active');
+                    if (icon) {
+                        icon.classList.remove('fas', 'fa-eye');
+                        icon.classList.add('far', 'fa-eye-slash');
+                    }
+                    btn.title = 'Отметить как просмотренное';
+                }
+            });
+        }
+
+        function toggleWatched(id) {
+            const item = itemsData[id];
+            if (!item) return;
+
+            // Check current watched status
+            fetch(`/api/favorites/check/${id}`)
+            .then(r => r.json())
+            .then(data => {
+                const isWatched = data.folders.includes('watched');
+                
+                if (isWatched) {
+                    // Remove from watched folder
+                    fetch(`/api/favorites/remove/${id}?folder_id=watched`, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(removeData => {
+                        updateWatchedIcon(id, false);
+                        showNotification('Удалено из просмотренных', 'info');
+                        // Show the card again
+                        const card = document.querySelector(`.content-card[onclick*="/movie/${id}"], .content-card[onclick*="/tv/${id}"]`);
+                        if (card) {
+                            card.style.opacity = '1';
+                            card.style.pointerEvents = 'auto';
+                        }
+                    });
+                } else {
+                    // Add to watched folder
+                    fetch('/api/favorites/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            ...item,
+                            folder_id: 'watched'
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(addData => {
+                        if (addData.success) {
+                            updateWatchedIcon(id, true);
+                            showNotification('Отмечено как просмотренное', 'success');
+                            // Hide the card
+                            const card = document.querySelector(`.content-card[onclick*="/movie/${id}"], .content-card[onclick*="/tv/${id}"]`);
+                            if (card) {
+                                card.style.opacity = '0.5';
+                                card.style.pointerEvents = 'none';
+                            }
+                        } else {
+                            showNotification(addData.message || 'Ошибка', 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error marking as watched:', err);
+                        showNotification('Ошибка при отметке', 'error');
+                    });
+                }
+            });
+        }
+        
+        function showNotification(msg, type) {
+            const div = document.createElement('div');
+            div.className = 'notification ' + type;
+            div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check' : 'info') + '-circle"></i><span>' + msg + '</span>';
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+    </script>
+</body>
+</html>

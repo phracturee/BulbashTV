@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ item.title }} - BulbashTV</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        .player-overlay, .torrents-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 10000;
+            overflow-y: auto;
+        }
+        
+        .player-overlay.active, .torrents-overlay.active {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+        
+        .player-container, .torrents-container {
+            width: 100%;
+            max-width: 900px;
+            background: rgba(20, 20, 20, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 20px;
+        }
+        
+        .player-header, .torrents-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .player-header h2, .torrents-header h2 {
+            margin: 0;
+            color: var(--text-color);
+            font-size: 1.5rem;
+        }
+        
+        .player-close, .torrents-close {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        
+        .player-close:hover, .torrents-close:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .player-loading {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        /* Torrents list styles */
+        .torrents-list {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        .torrent-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+        }
+        
+        .torrent-item:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: var(--accent);
+            transform: translateX(5px);
+        }
+        
+        .torrent-info {
+            flex: 1;
+        }
+        
+        .torrent-title {
+            font-size: 1rem;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: var(--text-color);
+        }
+        
+        .torrent-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: #888;
+        }
+        
+        .torrent-quality {
+            background: var(--accent);
+            color: #000;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+        
+        .torrent-tracker {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        
+        .torrent-stats {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .torrent-seeds {
+            color: #4CAF50;
+        }
+        
+        .torrent-size {
+            color: #aaa;
+            min-width: 80px;
+            text-align: right;
+        }
+        
+        .torrent-play-btn {
+            background: var(--accent);
+            border: none;
+            color: #000;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-left: 15px;
+            transition: transform 0.2s;
+        }
+        
+        .torrent-play-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        /* Selected torrent styling */
+        .torrent-item.selected {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.1));
+            border-color: #4CAF50;
+            border-width: 2px;
+            position: relative;
+        }
+        
+        .torrent-item.selected::before {
+            content: '★';
+            position: absolute;
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #4CAF50;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+        }
+        
+        .torrent-item.selected .torrent-title {
+            color: #4CAF50;
+            font-weight: 600;
+        }
+        
+        .torrent-item.selected:hover {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.25), rgba(76, 175, 80, 0.15));
+            border-color: #66BB6A;
+        }
+        
+        .search-loading {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .search-loading i {
+            font-size: 3rem;
+            color: var(--accent);
+            margin-bottom: 15px;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        
+        .no-results i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        /* Back button - same style as sidebar buttons */
+        .back-to-prev {
+            position: fixed;
+            top: 15px;  /* Выравнивание по верху как sidebar */
+            left: 15px;  /* Слева от sidebar */
+            width: 50px;  /* Как кнопки в баре */
+            height: 50px;  /* Как кнопки в баре */
+            border-radius: 50%;
+            background: transparent;
+            color: var(--text-color);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            z-index: 1000;
+        }
+
+        .back-to-prev:hover {
+            color: var(--accent);
+            background: rgba(218, 165, 32, 0.2);
+        }
+
+        /* Load more torrents button */
+        .load-more-torrents {
+            text-align: center;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .btn-load-more {
+            background: rgba(218, 165, 32, 0.2);
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-load-more:hover {
+            background: rgba(218, 165, 32, 0.3);
+            transform: scale(1.05);
+        }
+
+        .btn-load-more i {
+            transition: transform 0.3s;
+        }
+
+        .btn-load-more:hover i {
+            transform: translateY(3px);
+        }
+    </style>
+</head>
+<body class="movie-page">
+    <nav class="sidebar">
+        <ul>
+            <li><a href="/search"><i class="fas fa-search"></i></a></li>
+            <li><a href="/"><i class="fas fa-home"></i></a></li>
+            <li><a href="/favorites"><i class="fas fa-star"></i></a></li>
+            <li><a href="/history"><i class="fas fa-history"></i></a></li>
+            <li><a href="#"><i class="fas fa-cog"></i></a></li>
+        </ul>
+    </nav>
+
+    <!-- Back button -->
+    <a href="javascript:history.back()" class="back-to-prev" title="Назад">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+
+    <main class="movie-main">
+        <div class="movie-backdrop" style="background-image: url('{{ item.backdrop_path or item.poster_path }}');">
+            <div class="movie-backdrop-overlay"></div>
+        </div>
+
+        <div class="movie-content">
+            <div class="movie-poster-section">
+                <div class="movie-poster">
+                    <img src="{{ item.poster_path }}" alt="{{ item.title }}">
+                </div>
+            </div>
+
+            <div class="movie-info-section">
+                <div class="movie-header">
+                    <h1>{{ item.title }}</h1>
+                    {% if item.tagline %}
+                    <p class="movie-tagline">{{ item.tagline }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="movie-meta">
+                    {% if item.year %}
+                    <span class="meta-item"><i class="fas fa-calendar"></i> {{ item.year }}</span>
+                    {% endif %}
+                    
+                    {% if item.genres %}
+                    <span class="meta-item"><i class="fas fa-film"></i> {{ item.genres | join(', ') }}</span>
+                    {% endif %}
+                    
+                    <span class="meta-item rating"><i class="fas fa-star"></i> {{ item.vote_average }}</span>
+                    
+                    {% if item_type == 'movie' and item.runtime %}
+                    <span class="meta-item"><i class="fas fa-clock"></i> {{ item.runtime }} мин</span>
+                    {% endif %}
+                    
+                    {% if item_type == 'tv' and item.number_of_seasons %}
+                    <span class="meta-item"><i class="fas fa-list"></i> {{ item.number_of_seasons }} сезонов</span>
+                    {% endif %}
+                </div>
+
+                <div class="movie-description">
+                    <h3>Описание</h3>
+                    <p>{{ item.overview or 'Описание отсутствует' }}</p>
+                </div>
+
+                <div class="movie-actions">
+                    {% if item_type == 'tv' %}
+                    <a href="/tv/{{ item.id }}/episodes" class="btn-watch" style="text-decoration: none;">
+                        <i class="fas fa-play"></i> Смотреть
+                    </a>
+                    {% else %}
+                    <button class="btn-watch" onclick="openTorrentsModal()">
+                        <i class="fas fa-play"></i> Смотреть
+                    </button>
+                    {% endif %}
+                    <button class="btn-favorite {% if item.is_favorite %}active{% endif %}" onclick="showFolderSelectionModal({{ item.id }})" data-id="{{ item.id }}">
+                        <i class="{% if item.is_favorite %}fas{% else %}far{% endif %} fa-heart"></i>
+                    </button>
+                    <button class="btn-watched {% if item.is_watched %}active{% endif %}" onclick="toggleWatched({{ item.id }})" title="{% if item.is_watched %}Просмотрено{% else %}Отметить как просмотренное{% endif %}">
+                        <i class="{% if item.is_watched %}fas{% else %}far{% endif %} fa-eye{% if not item.is_watched %}-slash{% endif %}"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Torrents Selection Overlay -->
+    <div class="torrents-overlay" id="torrentsOverlay">
+        <div class="torrents-container">
+            <div class="torrents-header">
+                <h2><i class="fas fa-magnet"></i> Выберите раздачу</h2>
+                <button class="torrents-close" onclick="closeTorrentsModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="torrentsContent">
+                <div class="search-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <h3>Поиск торрентов...</h3>
+                    <p style="color: #888;">Ищем на YTS, TPB, RARBG</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Overlay -->
+    <div class="player-overlay" id="playerOverlay">
+        <div class="player-container">
+            <div class="player-header">
+                <h2>{{ item.title }}</h2>
+                <button class="player-close" onclick="closePlayer()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="player-loading" id="playerLoading">
+                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: var(--accent); margin-bottom: 15px;"></i>
+                <h3>Запуск видео...</h3>
+                <p id="playerStatus" style="color: #888; margin-top: 10px;">Подключение к серверу...</p>
+
+                <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
+                    <button onclick="closePlayer()" style="padding: 12px 25px; background: #ff4444; border: none; border-radius: 5px; color: white; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-stop"></i> Остановить
+                    </button>
+                </div>
+                
+                <p style="color: #666; font-size: 0.85rem; margin-top: 20px;">
+                    Окно закроется автоматически после завершения воспроизведения
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const movieTitle = "{{ item.title }}";
+        const itemId = {{ item.id }};
+
+        // Update favorite icon on page load based on actual folders
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch(`/api/favorites/check/${itemId}`)
+            .then(r => r.json())
+            .then(data => {
+                const currentFolders = data.folders || [];
+                const isFavorite = currentFolders.length > 0 && !currentFolders.includes('watched');
+                
+                const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
+                const icon = btn.querySelector('i');
+                if (btn && icon) {
+                    if (isFavorite) {
+                        btn.classList.add('active');
+                        icon.classList.remove('far');
+                        icon.classList.add('fas');
+                    } else {
+                        btn.classList.remove('active');
+                        icon.classList.remove('fas');
+                        icon.classList.add('far');
+                    }
+                }
+            });
+        });
+
+        // ===== TORRENT SELECTION =====
+        
+        function openTorrentsModal() {
+            console.log('=== OPEN TORRENTS MODAL ===');
+            document.getElementById('torrentsOverlay').classList.add('active');
+            searchTorrents();
+        }
+        
+        function closeTorrentsModal() {
+            document.getElementById('torrentsOverlay').classList.remove('active');
+        }
+        
+        function searchTorrents() {
+            const contentDiv = document.getElementById('torrentsContent');
+            contentDiv.innerHTML = `
+                <div class="search-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <h3>Поиск торрентов...</h3>
+                    <p style="color: #888;">Ищем: "${movieTitle}"</p>
+                </div>
+            `;
+
+            console.log('[Torrent Search] Starting search for:', movieTitle);
+
+            // Search all trackers with timeout
+            const searchPromise = fetch(`/api/torrents/search?q=${encodeURIComponent(movieTitle)}&t=${Date.now()}`);
+            
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Search timeout (30s)')), 30000);
+            });
+
+            Promise.race([searchPromise, timeoutPromise])
+            .then(r => {
+                console.log('[Torrent Search] Response received:', r.status);
+                return r.json();
+            })
+            .then(data => {
+                console.log('[Torrent Search] Data:', data);
+                console.log('[Torrent Search] Results count:', data.results ? data.results.length : 0);
+                
+                // Log first result to check seeds
+                if (data.results && data.results.length > 0) {
+                    console.log('[Torrent Search] First result:', data.results[0]);
+                    console.log('[Torrent Search] Seeds:', data.results[0].seeds);
+                }
+                
+                if (data.success && data.results && data.results.length > 0) {
+                    console.log('[Torrent Search] Found', data.results.length, 'results');
+                    displayTorrents(data.results);
+                } else {
+                    console.log('[Torrent Search] No results found');
+                    contentDiv.innerHTML = `
+                        <div class="no-results">
+                            <i class="fas fa-search"></i>
+                            <h3>Ничего не найдено</h3>
+                            <p>Попробуйте позже или выберите другой фильм</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(err => {
+                console.error('[Torrent Search] Error:', err);
+                contentDiv.innerHTML = `
+                    <div class="no-results">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <h3>Ошибка поиска</h3>
+                        <p>${err.message || 'Проверьте подключение к интернету'}</p>
+                        <p style="color: #666; font-size: 0.85rem; margin-top: 10px;">Проверьте логи: /logs/torrent.log</p>
+                    </div>
+                `;
+            });
+        }
+        
+        function displayTorrents(torrents, append = false) {
+            const contentDiv = document.getElementById('torrentsContent');
+            
+            // Initialize or get current state
+            if (!append) {
+                window.allTorrents = torrents;
+                window.displayedTorrents = 0;
+                window.loadingTorrents = false;
+            }
+            
+            // Display next batch (30 at a time)
+            const BATCH_SIZE = 30;
+            const start = window.displayedTorrents;
+            const end = Math.min(start + BATCH_SIZE, window.allTorrents.length);
+            
+            if (start === 0 || !append) {
+                contentDiv.innerHTML = '<div class="torrents-list"></div>';
+            }
+            
+            const listDiv = contentDiv.querySelector('.torrents-list');
+            
+            for (let i = start; i < end; i++) {
+                const torrent = window.allTorrents[i];
+                const selectedClass = torrent.selected ? 'selected' : '';
+                const selectedBadge = torrent.selected
+                    ? '<span style="color: #4CAF50; margin-right: 5px;"><i class="fas fa-check-circle"></i> Выбрано</span>'
+                    : '';
+                const isKinozal = torrent.tracker === 'Kinozal';
+                const iconClass = isKinozal ? 'fa-external-link-alt' : 'fa-play';
+
+                // Get playback progress for this torrent
+                const progress = getPlaybackProgress(torrent.magnet);
+                const progressBadge = progress.position > 0
+                    ? `<span style="color: #FFA500; font-size: 0.85rem; margin-left: 10px;"><i class="fas fa-clock"></i> ${progress.formatted}</span>`
+                    : '';
+
+                // Store data in data attributes to avoid escaping issues
+                const magnetData = encodeURIComponent(torrent.magnet);
+                const titleData = encodeURIComponent(torrent.title);
+                const trackerData = encodeURIComponent(torrent.tracker);
+
+                const html = `
+                    <div class="torrent-item ${selectedClass}" data-magnet="${magnetData}" data-title="${titleData}" data-tracker="${trackerData}">
+                        <div class="torrent-info">
+                            <div class="torrent-title">${selectedBadge}${escapeHtml(torrent.title)}${progressBadge}</div>
+                            <div class="torrent-meta">
+                                <span class="torrent-quality">${escapeHtml(torrent.quality)}</span>
+                                <span class="torrent-tracker">${escapeHtml(torrent.tracker)}</span>
+                                <span style="color: #4CAF50;"><i class="fas fa-arrow-up"></i> ${torrent.seeds || 0}</span>
+                            </div>
+                        </div>
+                        <div class="torrent-stats">
+                            <span class="torrent-size">${escapeHtml(torrent.size)}</span>
+                            <button class="torrent-play-btn" onclick="event.stopPropagation(); playTorrentFromData(this)">
+                                <i class="fas ${iconClass}"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                listDiv.insertAdjacentHTML('beforeend', html);
+            }
+            
+            window.displayedTorrents = end;
+            
+            // Add click handlers
+            document.querySelectorAll('.torrent-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const magnet = decodeURIComponent(this.dataset.magnet);
+                    const title = decodeURIComponent(this.dataset.title);
+                    const tracker = decodeURIComponent(this.dataset.tracker);
+                    selectTorrent(magnet, title, tracker);
+                });
+            });
+            
+            // Add "load more" button if there are more torrents
+            if (end < window.allTorrents.length) {
+                const loadMoreDiv = document.createElement('div');
+                loadMoreDiv.className = 'load-more-torrents';
+                loadMoreDiv.innerHTML = `
+                    <button class="btn-load-more" onclick="loadMoreTorrents()">
+                        <i class="fas fa-chevron-down"></i> Показать ещё (${window.allTorrents.length - end} из ${window.allTorrents.length})
+                    </button>
+                `;
+                // Remove existing load more button if exists
+                const existing = contentDiv.querySelector('.load-more-torrents');
+                if (existing) existing.remove();
+                contentDiv.appendChild(loadMoreDiv);
+            }
+        }
+
+        function loadMoreTorrents() {
+            if (window.loadingTorrents) return;
+            window.loadingTorrents = true;
+            
+            const contentDiv = document.getElementById('torrentsContent');
+            const loadMoreDiv = contentDiv.querySelector('.load-more-torrents');
+            if (loadMoreDiv) {
+                loadMoreDiv.innerHTML = '<p style="text-align: center; color: #888;"><i class="fas fa-spinner fa-spin"></i> Загрузка...</p>';
+            }
+            
+            // Simulate loading delay for better UX
+            setTimeout(() => {
+                displayTorrents(window.allTorrents, true);
+                window.loadingTorrents = false;
+            }, 300);
+        }
+
+        function playTorrentFromData(btn) {
+            event.stopPropagation();
+            const item = btn.closest('.torrent-item');
+            const magnet = decodeURIComponent(item.dataset.magnet);
+            const title = decodeURIComponent(item.dataset.title);
+            const tracker = decodeURIComponent(item.dataset.tracker);
+            selectTorrent(magnet, title, tracker);
+        }
+
+        function getPlaybackProgress(magnet) {
+            // Will be populated from API
+            return { position: 0, duration: 0, formatted: '0:00' };
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function selectTorrent(magnet, title, tracker) {
+            console.log('=== SELECT TORRENT ===');
+            console.log('Title:', title);
+            console.log('Tracker:', tracker);
+            console.log('Magnet:', magnet.substring(0, 50) + '...');
+
+            // Check if this is a URL (Kinozal) instead of magnet link
+            if (magnet && magnet.startsWith('http')) {
+                console.log('Opening URL in browser:', magnet);
+                window.open(magnet, '_blank');
+                return;
+            }
+
+            // Save selected torrent to server
+            fetch('/api/torrents/selected', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    magnet: magnet,
+                    title: title,
+                    query: movieTitle
+                })
+            }).catch(err => console.error('Error saving selected torrent:', err));
+
+            // Close torrents modal
+            closeTorrentsModal();
+
+            // Open player overlay
+            document.getElementById('playerOverlay').classList.add('active');
+            updateStatus('Начало стриминга...', 'loading');
+
+            console.log('[Player] Starting streaming...');
+            
+            // Start torrent with popcorn-mpv
+            fetch('/api/torrent/start', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    magnet: magnet,
+                    title: title,
+                    query: movieTitle
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                console.log('[Player] Response:', data);
+                if (data.success && data.video_url) {
+                    console.log('[Player] Video URL:', data.video_url);
+                    
+                    // Show progress if available
+                    if (data.progress && data.progress.position > 0) {
+                        updateStatus(`Продолжить с ${data.progress.formatted}?`, 'info');
+                    } else {
+                        updateStatus('Запуск MPV...', 'loading');
+                    }
+                    
+                    // Don't open in new tab - popcorn-mpv handles MPV directly
+                    updateStatus('MPV запущен! Статистика ниже...', 'success');
+                    
+                    startStatusPolling(magnet);
+                } else {
+                    console.error('[Player] Start failed:', data.message);
+                    updateStatus('Ошибка: ' + data.message, 'error');
+                }
+            })
+            .catch(err => {
+                console.error('[Player] Fetch error:', err);
+                updateStatus('Ошибка подключения', 'error');
+            });
+        }
+
+        // Save playback progress periodically
+        let currentMagnet = null;
+        let progressInterval = null;
+
+        function startStatusPolling(magnet) {
+            currentMagnet = magnet;
+            
+            // Save progress every 10 seconds
+            progressInterval = setInterval(() => {
+                // Get current position from video element (if available)
+                const video = document.getElementById('videoPlayer');
+                if (video && video.currentTime) {
+                    saveProgress(magnet, Math.floor(video.currentTime), Math.floor(video.duration));
+                }
+            }, 10000);
+            
+            statusCheckInterval = setInterval(() => {
+                fetch('/api/torrent/status')
+                .then(r => r.json())
+                .then(data => {
+                    console.log('[Status]', data);
+                    
+                    if (data.progress) {
+                        const progressText = data.progress.toFixed(1) + '%';
+                        const speedText = data.speed || '0 MB/s';
+                        const peersText = data.peers || 0;
+                        
+                        updateStatus(
+                            `Загрузка: ${progressText} | Скорость: ${speedText} | Пиры: ${peersText}`,
+                            'loading'
+                        );
+                    }
+                    
+                    // Only close if explicitly completed by user
+                    // Don't close on 'stopped' or errors
+                    if (data.status === 'completed') {
+                        console.log('[Player] Torrent completed');
+                        showNotification('Воспроизведение завершено', 'info');
+                    }
+                })
+                .catch(err => {
+                    console.log('[Status] Check failed:', err);
+                    // Keep trying, don't close on network errors
+                    updateStatus('Ожидание подключения...', 'loading');
+                });
+            }, 2000);
+        }
+
+        function stopStatusPolling() {
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+                statusCheckInterval = null;
+            }
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+            // Note: Progress is saved by popcorn-mpv server directly
+            // We don't have access to video element since it's in MPV
+        }
+
+        function saveProgress(magnet, position, duration) {
+            fetch('/api/torrent/progress/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    magnet: magnet,
+                    position: position,
+                    duration: duration
+                })
+            }).catch(err => console.error('Error saving progress:', err));
+        }
+        
+        function stopTorrent() {
+            fetch('/api/torrent/stop', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(() => {
+                closePlayer();
+            });
+        }
+        
+        function updateStatus(message, type) {
+            const statusEl = document.getElementById('playerStatus');
+            if (type === 'error') {
+                statusEl.innerHTML = '<span style="color: #ff6b6b;"><i class="fas fa-exclamation-circle"></i> ' + message + '</span>';
+            } else if (type === 'success') {
+                statusEl.innerHTML = '<span style="color: #4CAF50;"><i class="fas fa-check-circle"></i> ' + message + '</span>';
+            } else {
+                statusEl.textContent = message;
+            }
+        }
+        
+        function closePlayer() {
+            console.log('[Player] Closing player...');
+            
+            // Stop polling and save progress
+            stopStatusPolling();
+            
+            // Stop torrent on server
+            fetch('/api/torrent/stop', {
+                method: 'POST'
+            })
+            .then(r => r.json())
+            .then(data => {
+                console.log('[Player] Torrent stopped:', data);
+            })
+            .catch(err => {
+                console.error('[Player] Error stopping torrent:', err);
+            });
+            
+            // Close overlay
+            document.getElementById('playerOverlay').classList.remove('active');
+            
+            showNotification('Воспроизведение остановлено', 'info');
+        }
+        
+        function toggleFavorite(id) {
+            showFolderSelectionModal(id);
+        }
+
+        function showFolderSelectionModal(itemId) {
+            // Fetch all folders
+            fetch('/api/favorites/folders')
+            .then(r => r.json())
+            .then(data => {
+                // Check current folders for this item
+                fetch(`/api/favorites/check/${itemId}`)
+                .then(r => r.json())
+                .then(checkData => {
+                    const currentFolders = checkData.folders || [];
+                    const isFavorite = currentFolders.length > 0 && !currentFolders.includes('watched');
+                    
+                    // Update heart icon based on actual favorite status
+                    const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
+                    const icon = btn.querySelector('i');
+                    if (btn && icon) {
+                        if (isFavorite) {
+                            btn.classList.add('active');
+                            icon.classList.remove('far');
+                            icon.classList.add('fas');
+                        } else {
+                            btn.classList.remove('active');
+                            icon.classList.remove('fas');
+                            icon.classList.add('far');
+                        }
+                    }
+                    
+                    const modal = document.createElement('div');
+                    modal.id = 'folderSelectionModal';
+                    modal.className = 'modal folder-selection-modal';
+
+                    let foldersHtml = '';
+                    data.folders.forEach(folder => {
+                        // Skip "watched" folder - it's handled separately
+                        if (folder.id === 'watched') return;
+                        
+                        const isInFolder = currentFolders.includes(folder.id);
+                        foldersHtml += `
+                            <div class="folder-option ${isInFolder ? 'in-folder' : ''}" onclick="${isInFolder ? `removeFromFolder('${folder.id}', ${itemId})` : `addToFolder('${folder.id}', ${itemId})`}">
+                                <i class="fas fa-folder${isInFolder ? '' : '-open'}"></i>
+                                <div class="folder-option-info">
+                                    <h4>${folder.name}</h4>
+                                    <span>${folder.item_count} элементов</span>
+                                </div>
+                                ${isInFolder ? '<i class="fas fa-check" style="color: var(--accent);"></i>' : ''}
+                            </div>
+                        `;
+                    });
+
+                    // Add "Watched" button before "Create new folder" (like on homepage)
+                    const isWatched = currentFolders.includes('watched');
+                    foldersHtml += `
+                        <div class="folder-option watched-option ${isWatched ? 'in-folder' : ''}" onclick="toggleWatched(${itemId}); closeFolderModal();">
+                            <i class="fas fa-eye"></i>
+                            <div class="folder-option-info">
+                                <h4>Просмотренное</h4>
+                                <span>${isWatched ? 'Отметить как непросмотренное' : 'Отметить как просмотренное'}</span>
+                            </div>
+                            ${isWatched ? '<i class="fas fa-check" style="color: #4CAF50;"></i>' : ''}
+                        </div>
+                    `;
+
+                    // Add "Create new folder" option at the end
+                    foldersHtml += `
+                        <div class="folder-option create-new-folder" onclick="createFolderAndAdd(${itemId})">
+                            <i class="fas fa-plus-circle"></i>
+                            <div class="folder-option-info">
+                                <h4>Создать новую папку</h4>
+                            </div>
+                        </div>
+                    `;
+
+                    modal.innerHTML = `
+                        <div class="modal-content">
+                            <h3>Добавить в папку</h3>
+                            <div class="folder-list">
+                                ${foldersHtml}
+                            </div>
+                            <div class="modal-buttons">
+                                <button onclick="closeFolderModal()" class="btn-secondary">Отмена</button>
+                            </div>
+                        </div>
+                    `;
+
+                    document.body.appendChild(modal);
+
+                    // Close on outside click
+                    modal.addEventListener('click', function(e) {
+                        if (e.target === this) closeFolderModal();
+                    });
+                });
+            });
+        }
+
+        function closeFolderModal() {
+            const modal = document.getElementById('folderSelectionModal');
+            if (modal) modal.remove();
+        }
+
+        function addToFolder(folderId, itemId) {
+            const item = {
+                id: itemId,
+                title: "{{ item.title }}",
+                media_type: "{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}",
+                poster_path: "{{ item.poster_path }}",
+                vote_average: "{{ item.vote_average }}",
+                release_date: "{{ item.release_date or item.year }}",
+                overview: "{{ item.overview }}"
+            };
+
+            fetch('/api/favorites/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({...item, folder_id: folderId})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Update heart icon
+                    const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
+                    if (btn) {
+                        btn.classList.add('active');
+                        const icon = btn.querySelector('i');
+                        if (icon) {
+                            icon.classList.remove('far');
+                            icon.classList.add('fas');
+                        }
+                    }
+                    showNotification(`Добавлено в "${data.folder_name}"!`, 'success');
+                    closeFolderModal();
+                } else {
+                    showNotification(data.message || 'Ошибка', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Error adding to favorites:', err);
+                showNotification('Ошибка при добавлении', 'error');
+            });
+        }
+
+        function removeFromFolder(folderId, itemId) {
+            fetch(`/api/favorites/remove/${itemId}?folder_id=${folderId}`, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Check if still in any favorites
+                    fetch(`/api/favorites/check/${itemId}`)
+                    .then(r => r.json())
+                    .then(checkData => {
+                        const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
+                        if (btn && !checkData.is_favorite) {
+                            btn.classList.remove('active');
+                            const icon = btn.querySelector('i');
+                            if (icon) {
+                                icon.classList.remove('fas');
+                                icon.classList.add('far');
+                            }
+                        }
+                        showNotification('Удалено из папки', 'info');
+                        closeFolderModal();
+                        // Reload modal to update folder list
+                        setTimeout(() => showFolderSelectionModal(itemId), 500);
+                    });
+                }
+            })
+            .catch(err => {
+                console.error('Error removing from favorites:', err);
+                showNotification('Ошибка при удалении', 'error');
+            });
+        }
+
+        function createFolderAndAdd(itemId) {
+            // Create inline modal for folder name input
+            const existingInput = document.getElementById('inlineFolderInput');
+            if (existingInput) existingInput.remove();
+
+            const inputDiv = document.createElement('div');
+            inputDiv.id = 'inlineFolderInput';
+            inputDiv.className = 'inline-folder-input';
+            inputDiv.innerHTML = `
+                <div class="folder-input-content">
+                    <input type="text" id="newFolderNameInput" placeholder="Название папки" maxlength="50" autofocus>
+                    <div class="folder-input-buttons">
+                        <button onclick="cancelFolderInput()" class="btn-secondary">Отмена</button>
+                        <button onclick="submitNewFolder(${itemId})" class="btn-primary">Создать</button>
+                    </div>
+                </div>
+            `;
+
+            // Insert after the "Create new folder" option
+            const createOption = document.querySelector('.create-new-folder');
+            if (createOption) {
+                createOption.after(inputDiv);
+            }
+
+            document.getElementById('newFolderNameInput').focus();
+
+            // Submit on Enter
+            document.getElementById('newFolderNameInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') submitNewFolder(itemId);
+            });
+        }
+
+        function cancelFolderInput() {
+            const inputDiv = document.getElementById('inlineFolderInput');
+            if (inputDiv) inputDiv.remove();
+        }
+
+        function submitNewFolder(itemId) {
+            const name = document.getElementById('newFolderNameInput').value.trim();
+            if (!name) {
+                showNotification('Введите название папки', 'error');
+                return;
+            }
+
+            fetch('/api/favorites/folders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Add item to new folder
+                    addToFolder(data.folder_id, itemId);
+                    cancelFolderInput();
+                } else {
+                    showNotification(data.message || 'Ошибка', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Error creating folder:', err);
+                showNotification('Ошибка при создании', 'error');
+            });
+        }
+
+        function toggleWatched(id) {
+            fetch(`/api/favorites/check/${id}`)
+            .then(r => r.json())
+            .then(data => {
+                const isWatched = data.folders.includes('watched');
+                const btn = document.querySelector(`.btn-watched[onclick*="toggleWatched(${id})"]`);
+                const icon = btn.querySelector('i');
+                
+                if (isWatched) {
+                    // Remove from watched
+                    fetch(`/api/favorites/remove/${id}?folder_id=watched`, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(() => {
+                        btn.classList.remove('active');
+                        icon.classList.remove('fas', 'fa-eye');
+                        icon.classList.add('far', 'fa-eye-slash');
+                        btn.title = 'Отметить как просмотренное';
+                        showNotification('Удалено из просмотренных', 'info');
+                    });
+                } else {
+                    // Add to watched
+                    fetch('/api/favorites/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            id: id,
+                            title: "{{ item.title }}",
+                            media_type: "{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}",
+                            poster_path: "{{ item.poster_path }}",
+                            vote_average: "{{ item.vote_average }}",
+                            release_date: "{{ item.release_date or item.year }}",
+                            overview: "{{ item.overview }}",
+                            folder_id: 'watched'
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            btn.classList.add('active');
+                            icon.classList.remove('far', 'fa-eye-slash');
+                            icon.classList.add('fas', 'fa-eye');
+                            btn.title = 'Просмотрено';
+                            showNotification('Отмечено как просмотренное', 'success');
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+</body>
+</html>

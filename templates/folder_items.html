@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - BulbashTV</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* Back button - same style as movie/tv pages */
+        .back-to-prev {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: transparent;
+            color: var(--text-color);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            z-index: 1000;
+        }
+
+        .back-to-prev:hover {
+            color: var(--accent);
+            background: rgba(218, 165, 32, 0.2);
+        }
+
+        /* Folder action buttons (rename/delete) */
+        .folder-actions {
+            position: fixed;
+            top: 80px;  /* Below back button (15px + 50px + 15px gap) */
+            left: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .folder-action-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: transparent;
+            color: var(--text-color);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .folder-action-btn:hover {
+            background: rgba(218, 165, 32, 0.2);
+            color: var(--accent);
+            transform: scale(1.1);
+        }
+
+        .folder-action-btn:last-child:hover {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff4444;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;  /* Hidden by default */
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+        }
+
+        .modal-content {
+            background: #1a1a1a;
+            padding: 30px;
+            border-radius: 15px;
+            width: 400px;
+            max-width: 90%;
+        }
+
+        .modal-content h3 {
+            margin: 0 0 20px 0;
+            color: var(--text-color);
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: var(--text-color);
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        .modal-content input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-buttons .btn-secondary,
+        .modal-buttons .btn-primary {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .modal-buttons .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-color);
+        }
+
+        .modal-buttons .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-buttons .btn-primary {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .modal-buttons .btn-primary:hover {
+            background: var(--accent);
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="category-page folder-items-page">
+    <nav class="sidebar">
+        <ul>
+            <li><a href="/search"><i class="fas fa-search"></i></a></li>
+            <li><a href="/"><i class="fas fa-home"></i></a></li>
+            <li><a href="/favorites" class="active"><i class="fas fa-star"></i></a></li>
+            <li><a href="/history"><i class="fas fa-history"></i></a></li>
+            <li><a href="#"><i class="fas fa-cog"></i></a></li>
+        </ul>
+    </nav>
+
+    <!-- Back button - same style as movie/tv pages -->
+    <a href="javascript:history.back()" class="back-to-prev" title="Назад">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+
+    <!-- Rename/Delete buttons (only for non-default folders) -->
+    {% if folder_id != 'default' and folder_id != 'watched' %}
+    <div class="folder-actions">
+        <button class="folder-action-btn" onclick="showRenameInput()" title="Переименовать">
+            <i class="fas fa-edit"></i>
+        </button>
+        <button class="folder-action-btn" onclick="deleteFolder('{{ folder_id }}')" title="Удалить">
+            <i class="fas fa-trash"></i>
+        </button>
+    </div>
+    {% endif %}
+
+    <main class="category-main">
+        <header class="category-header">
+            <h1 id="folderTitle">
+                {% if folder_id == 'watched' %}
+                <i class="fas fa-eye"></i>
+                {% else %}
+                <i class="fas fa-folder"></i>
+                {% endif %}
+                {{ title }}
+            </h1>
+        </header>
+
+        <section class="category-content">
+            {% if folder['items'] %}
+            <div class="grid-list">
+                {% for item in folder['items'] %}
+                {% set item_url = item.url if item.url else ('/movie/' ~ item.id|string if item.media_type == 'Фильм' else '/tv/' ~ item.id|string) %}
+                <a href="{{ item_url }}" class="grid-item-link" data-id="{{ item.id }}">
+                    <div class="grid-item" >
+                        <div class="grid-item-thumbnail">
+                            {% if item.poster_path and item.poster_path.startswith('http') %}
+                            <img src="{{ item.poster_path }}" alt="{{ item.title }}">
+                            {% elif item.poster_path %}
+                            <img src="https://image.tmdb.org/t/p/w500{{ item.poster_path }}" alt="{{ item.title }}">
+                            {% elif item.backdrop_path %}
+                            <img src="{{ item.backdrop_path }}" alt="{{ item.title }}">
+                            {% else %}
+                            <img src="https://placehold.co/200x300/333333/FFFFFF?text={{ item.title[:15] }}" alt="{{ item.title }}">
+                            {% endif %}
+                            {% if item.media_type %}
+                            <span class="media-badge">{{ item.media_type }}</span>
+                            {% endif %}
+                            {% if folder_id == 'watched' %}
+                            <button class="remove-btn" onclick="event.preventDefault(); event.stopPropagation(); removeFromFolder('{{ folder_id }}', {{ item.id }})" title="Удалить из просмотренных">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            {% else %}
+                            <button class="remove-btn" onclick="event.preventDefault(); event.stopPropagation(); removeFromFolder('{{ folder_id }}', {{ item.id }})" title="Удалить из папки">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                        <div class="grid-item-info">
+                            <h3>{{ item.title }}</h3>
+                            <div class="grid-item-meta">
+                                {% if item.release_date %}
+                                <span class="year">{{ item.release_date }}</span>
+                                {% elif item.first_air_date %}
+                                <span class="year">{{ item.first_air_date }}</span>
+                                {% endif %}
+                                <span class="rating"><i class="fas fa-star"></i> {{ item.vote_average }}</span>
+                            </div>
+                            {% if item.overview %}
+                            <p class="overview">{{ item.overview[:100] }}{% if item.overview|length > 100 %}...{% endif %}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-folder-open"></i>
+                <h2>Папка пуста</h2>
+                <p>В этой папке пока нет фильмов или сериалов</p>
+                <a href="/" class="btn-primary">Добавить контент</a>
+            </div>
+            {% endif %}
+        </section>
+    </main>
+
+    <!-- Modal for rename folder -->
+    <div id="renameModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>Переименовать папку</h3>
+            <input type="text" id="renameFolderName" placeholder="Название папки" maxlength="50" value="{{ title }}">
+            <div class="modal-buttons">
+                <button onclick="closeRenameModal()" class="btn-secondary">Отмена</button>
+                <button onclick="submitRename('{{ folder_id }}')" class="btn-primary">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function removeFromFolder(folderId, itemId) {
+            fetch(`/api/favorites/remove/${itemId}?folder_id=${folderId}`, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const item = document.querySelector(`.grid-item[data-id="${itemId}"]`);
+                        if (item) {
+                            item.remove();
+                        }
+                        showNotification('Удалено из папки', 'success');
+                        
+                        const grid = document.querySelector('.grid-list');
+                        if (grid && grid.children.length === 0) {
+                            location.reload();
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Ошибка при удалении', 'error');
+                });
+        }
+        
+        function showRenameInput() {
+            document.getElementById('renameModal').style.display = 'flex';
+            document.getElementById('renameFolderName').focus();
+            document.getElementById('renameFolderName').select();
+        }
+
+        function closeRenameModal() {
+            document.getElementById('renameModal').style.display = 'none';
+        }
+
+        function submitRename(folderId) {
+            const newName = document.getElementById('renameFolderName').value.trim();
+            if (!newName) {
+                showNotification('Введите название папки', 'error');
+                return;
+            }
+
+            fetch(`/api/favorites/folders/${folderId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Папка переименована!', 'success');
+                    document.getElementById('folderTitle').innerHTML = '<i class="fas fa-folder"></i> ' + newName;
+                    closeRenameModal();
+                } else {
+                    showNotification(data.message || 'Ошибка', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Ошибка при переименовании', 'error');
+            });
+        }
+
+        function deleteFolder(folderId) {
+            if (!confirm('Удалить эту папку? Все фильмы будут удалены из папки.')) {
+                return;
+            }
+
+            fetch(`/api/favorites/folders/${folderId}`, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Папка удалена', 'success');
+                        setTimeout(() => window.location.href = '/favorites', 500);
+                    } else {
+                        showNotification(data.message || 'Ошибка', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Ошибка при удалении', 'error');
+                });
+        }
+
+        // Close modal on outside click
+        document.getElementById('renameModal').addEventListener('click', function(e) {
+            if (e.target === this) closeRenameModal();
+        });
+
+        // Submit on Enter
+        document.getElementById('renameFolderName').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') submitRename('{{ folder_id }}');
+        });
+        
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}-circle"></i><span>${message}</span>`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+    </script>
+</body>
+</html>

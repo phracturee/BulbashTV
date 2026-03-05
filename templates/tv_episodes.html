@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ item.title }} - Сезоны и серии - BulbashTV</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* Override sidebar styles */
+        .sidebar,
+        .sidebar ul,
+        .sidebar li,
+        .sidebar a,
+        .sidebar a:hover,
+        .sidebar a.active {
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+
+        .sidebar a:hover,
+        .sidebar a.active {
+            background: rgba(218, 165, 32, 0.2) !important;
+        }
+
+        .tv-series-page {
+            position: relative;
+            padding: 30px 40px 30px 120px;
+            min-height: 100vh;
+        }
+
+        /* Backdrop */
+        .tv-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100vh;
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            z-index: 1;
+        }
+
+        .tv-backdrop-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 30%, rgba(0,0,0,0.5) 100%),
+                linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.95) 100%);
+        }
+
+        /* Content */
+        .tv-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Back button */
+        .back-to-prev {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: transparent;
+            color: var(--text-color);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            z-index: 1000;
+        }
+
+        .back-to-prev:hover {
+            color: var(--accent);
+            background: rgba(218, 165, 32, 0.2);
+        }
+
+        /* Two column layout */
+        .tv-show-layout {
+            display: flex;
+            gap: 30px;
+            margin-top: 20px;
+            height: calc(100vh - 150px);
+        }
+
+        /* Seasons list - left column */
+        .seasons-list-container {
+            width: 280px;
+            flex-shrink: 0;
+            height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .seasons-list-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .seasons-list-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .seasons-list-container::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 10px;
+        }
+
+        .season-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: var(--text-color);
+        }
+
+        .season-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .season-item:hover {
+            background: rgba(60, 60, 60, 0.8);
+            border-color: var(--accent);
+        }
+
+        .season-item.active {
+            background: rgba(218, 165, 32, 0.2);
+            border-color: var(--accent);
+        }
+
+        .season-item h4 {
+            margin: 0 0 5px 0;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .season-item p {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        /* Episodes list - center column */
+        .episodes-list-container {
+            flex: 1;
+            min-width: 0;
+            height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .episodes-list-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .episodes-list-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .episodes-list-container::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 10px;
+        }
+
+        /* Episode info - right column */
+        .episode-info-container {
+            width: 350px;
+            flex-shrink: 0;
+            height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .episode-info-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .episode-info-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .episode-info-container::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 10px;
+        }
+
+        .episode-info-placeholder {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .episode-info-placeholder i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .episode-info-placeholder p {
+            font-size: 1rem;
+        }
+
+        .episode-details {
+            color: var(--text-color);
+            padding: 20px;
+        }
+
+        .episode-details-header {
+            margin-bottom: 25px;
+            padding-bottom: 0;
+        }
+
+        .episode-details-header h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.3rem;
+            color: var(--text-color);
+        }
+
+        .episode-details-header .episode-number {
+            display: inline-block;
+            background: rgba(218, 165, 32, 0.2);
+            color: var(--accent);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .episode-meta-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .episode-meta-details span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .episode-meta-details .rating {
+            color: var(--accent);
+        }
+
+        .episode-description {
+            line-height: 1.6;
+            color: #aaa;
+        }
+
+        .episode-description h4 {
+            margin: 0 0 10px 0;
+            font-size: 0.95rem;
+            color: var(--text-color);
+        }
+
+        .episode-description p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .episodes-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .episode-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .episode-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent);
+        }
+
+        .episode-item.active {
+            background: rgba(218, 165, 32, 0.2);
+            border-color: var(--accent);
+        }
+
+        .episode-item.aired-future {
+            background: rgba(100, 100, 100, 0.3);
+            border-color: rgba(100, 100, 100, 0.5);
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .episode-item.aired-future:hover {
+            background: rgba(100, 100, 100, 0.3);
+            border-color: rgba(100, 100, 100, 0.5);
+            transform: none;
+        }
+
+        .episode-number-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #fff;
+            min-width: 75px;
+            text-align: center;
+        }
+
+        .episode-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .episode-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .episode-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .episode-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .episode-meta .rating {
+            color: var(--accent);
+        }
+
+        /* Episode buttons */
+        .episode-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .episode-btn {
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .episode-btn-watched {
+            background: rgba(76, 175, 80, 0.3);
+            color: #4CAF50;
+            border: 1px solid #4CAF50;
+        }
+
+        .episode-btn-watched:hover {
+            background: rgba(76, 175, 80, 0.5);
+        }
+
+        .episode-btn-watched.watched {
+            background: #4CAF50;
+            color: #fff;
+        }
+
+        .episode-btn-watch {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .episode-btn-watch:hover {
+            background: #ffb700;
+        }
+
+        /* Loading states */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--accent);
+        }
+
+        .loading i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* No content */
+        .no-content {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .no-content i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .tv-series-page {
+                padding: 30px 20px;
+            }
+
+            .tv-show-layout {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .seasons-list-container {
+                width: 100%;
+                max-height: 300px;
+            }
+
+            .episodes-list-container {
+                max-height: 500px;
+            }
+        }
+    </style>
+</head>
+<body class="tv-series-page">
+    <nav class="sidebar">
+        <ul>
+            <li><a href="/search"><i class="fas fa-search"></i></a></li>
+            <li><a href="/"><i class="fas fa-home"></i></a></li>
+            <li><a href="/favorites"><i class="fas fa-star"></i></a></li>
+            <li><a href="/history"><i class="fas fa-history"></i></a></li>
+            <li><a href="#"><i class="fas fa-cog"></i></a></li>
+        </ul>
+    </nav>
+
+    <!-- Backdrop -->
+    {% if item.backdrop_path %}
+    <div class="tv-backdrop" style="background-image: url('{{ item.backdrop_path }}');">
+        <div class="tv-backdrop-overlay"></div>
+    </div>
+    {% else %}
+    <div class="tv-backdrop" style="background-image: url('{{ url_for('static', filename='img/background.jpg') }}');">
+        <div class="tv-backdrop-overlay"></div>
+    </div>
+    {% endif %}
+
+    <!-- Back button -->
+    <a href="javascript:history.back()" class="back-to-prev" title="Назад">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+
+    <!-- Content -->
+    <div class="tv-content">
+        <div class="tv-show-layout">
+            <!-- Seasons list - left column -->
+            <div class="seasons-list-container">
+                <div id="seasonsList">
+                    <div class="loading">
+                        <i class="fas fa-spinner"></i>
+                        <p>Загрузка сезонов...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Episodes list - center column -->
+            <div class="episodes-list-container">
+                <div id="episodesList">
+                    <div class="loading">
+                        <i class="fas fa-spinner"></i>
+                        <p>Выберите сезон...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Episode info - right column -->
+            <div class="episode-info-container">
+                <div id="episodeInfo">
+                    <div class="episode-info-placeholder">
+                        <i class="fas fa-tv"></i>
+                        <p>Выберите серию чтобы увидеть информацию</p>
+                    </div>
+                </div>
+                
+                <!-- Watch button - separate panel -->
+                <div id="watchButtonContainer" style="display: none; margin-top: 20px;">
+                    <button class="episode-btn episode-btn-watch" onclick="watchCurrentEpisode()" style="width: 100%; justify-content: center; padding: 18px 25px; font-size: 1.1rem; border-radius: 25px;">
+                        <i class="fas fa-play"></i> Смотреть
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TV_ID = {{ item.id }};
+        const TV_TITLE = "{{ item.title|replace('"', '\\"') }}";
+        let seasonsData = {};
+        let currentSeason = 1;
+        let currentEpisode = null;
+        let watchedEpisodes = new Set();
+
+        // Load watched episodes from localStorage
+        function loadWatchedEpisodes() {
+            const saved = localStorage.getItem(`tv_watched_${TV_ID}`);
+            if (saved) {
+                watchedEpisodes = new Set(JSON.parse(saved));
+            }
+        }
+
+        // Save watched episodes to localStorage
+        function saveWatchedEpisodes() {
+            localStorage.setItem(`tv_watched_${TV_ID}`, JSON.stringify([...watchedEpisodes]));
+        }
+
+        // Load seasons on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadWatchedEpisodes();
+            loadSeasons();
+        });
+
+        // Load all seasons
+        async function loadSeasons() {
+            try {
+                const response = await fetch(`/api/tv/${TV_ID}/seasons`);
+                const data = await response.json();
+
+                const container = document.getElementById('seasonsList');
+
+                if (!data.seasons || data.seasons.length === 0) {
+                    container.innerHTML = `
+                        <div class="no-content">
+                            <i class="fas fa-inbox"></i>
+                            <p>Сезоны не найдены</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                seasonsData = {};
+
+                let html = '';
+                data.seasons.forEach((season, index) => {
+                    html += `
+                        <div class="season-item ${index === 0 ? 'active' : ''}" 
+                             onclick="selectSeason(${season.season_number}, this)">
+                            <h4>${season.name}</h4>
+                            <p><i class="fas fa-film"></i> ${season.episode_count} серий</p>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+
+                // Find first season with unwatched episodes
+                let targetSeason = data.seasons[0].season_number;
+                for (let i = 0; i < data.seasons.length; i++) {
+                    const seasonNum = data.seasons[i].season_number;
+                    const hasUnwatched = await checkSeasonHasUnwatched(seasonNum);
+                    if (hasUnwatched) {
+                        targetSeason = seasonNum;
+                        break;
+                    }
+                }
+
+                // Load episodes for target season and select it
+                const targetSeasonEl = container.querySelector(`.season-item[onclick*="${targetSeason}"]`);
+                if (targetSeasonEl) {
+                    selectSeason(targetSeason, targetSeasonEl);
+                } else {
+                    loadEpisodes(data.seasons[0].season_number);
+                }
+            } catch (error) {
+                console.error('Error loading seasons:', error);
+                document.getElementById('seasonsList').innerHTML = `
+                    <div class="no-content">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Ошибка загрузки сезонов</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Check if season has unwatched episodes
+        async function checkSeasonHasUnwatched(seasonNumber) {
+            try {
+                const response = await fetch(`/api/tv/${TV_ID}/season/${seasonNumber}/episodes`);
+                const data = await response.json();
+                
+                if (!data.episodes) return false;
+                
+                for (const episode of data.episodes) {
+                    const episodeKey = `S${seasonNumber}E${episode.episode_number}`;
+                    if (!watchedEpisodes.has(episodeKey)) {
+                        return true;  // Found unwatched episode
+                    }
+                }
+                return false;  // All episodes watched
+            } catch (error) {
+                return false;
+            }
+        }
+
+        // Select season
+        function selectSeason(seasonNumber, element) {
+            // Remove active class from all seasons
+            document.querySelectorAll('.season-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // Add active class to selected season
+            element.classList.add('active');
+
+            currentSeason = seasonNumber;
+
+            // Load episodes for selected season
+            loadEpisodes(seasonNumber);
+        }
+
+        // Load episodes for a season
+        async function loadEpisodes(seasonNumber) {
+            const container = document.getElementById('episodesList');
+            container.innerHTML = `
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                    <p>Загрузка серий...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/api/tv/${TV_ID}/season/${seasonNumber}/episodes`);
+                const data = await response.json();
+
+                if (!data.episodes || data.episodes.length === 0) {
+                    container.innerHTML = `
+                        <div class="no-content">
+                            <i class="fas fa-film"></i>
+                            <p>Серии не найдены</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                seasonsData[seasonNumber] = data.episodes;
+
+                let html = '<div class="episodes-list">';
+                data.episodes.forEach((episode, index) => {
+                    const episodeNum = episode.episode_number;
+                    const airDate = episode.air_date || '';
+                    const rating = episode.vote_average > 0 ? episode.vote_average : 'N/A';
+                    
+                    // Check if episode has aired
+                    const hasAired = airDate && new Date(airDate) <= new Date();
+                    const episodeClass = hasAired ? 'episode-item' : 'episode-item aired-future';
+                    const clickHandler = hasAired ? `selectEpisode(${seasonNumber}, ${index}, this)` : '';
+                    
+                    // Check if episode is watched
+                    const episodeKey = `S${seasonNumber}E${episodeNum}`;
+                    const isWatched = watchedEpisodes.has(episodeKey);
+                    const watchedIcon = isWatched ? 'fas fa-eye' : 'fas fa-eye-slash';
+                    const watchedClass = isWatched ? 'watched' : '';
+                    
+                    html += `
+                        <div class="${episodeClass}" ${clickHandler ? 'onclick="' + clickHandler + '"' : ''} data-episode-index="${index}" data-season="${seasonNumber}">
+                            <div class="episode-number-badge">E${episodeNum.toString().padStart(2, '0')}</div>
+                            <div class="episode-info">
+                                <div class="episode-title">${episode.name}</div>
+                                <div class="episode-meta">
+                                    <span><i class="fas fa-calendar"></i> ${airDate || 'Дата выхода неизвестна'}</span>
+                                    ${episode.runtime ? `<span><i class="fas fa-clock"></i> ${episode.runtime} мин</span>` : ''}
+                                    ${episode.vote_average > 0 ? `<span class="rating"><i class="fas fa-star"></i> ${rating}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="episode-buttons">
+                                <button class="episode-btn episode-btn-watched ${watchedClass}" onclick="event.stopPropagation(); toggleWatchedEpisode(this, '${episodeKey}')" title="Отметить как просмотренное">
+                                    <i class="${watchedIcon}"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+
+                container.innerHTML = html;
+                
+                // Select first unwatched episode by default
+                let selectedEpisode = false;
+                
+                for (let i = 0; i < data.episodes.length; i++) {
+                    const episode = data.episodes[i];
+                    const episodeNum = episode.episode_number;
+                    const episodeKey = `S${seasonNumber}E${episodeNum}`;
+                    
+                    if (!watchedEpisodes.has(episodeKey)) {
+                        // Found first unwatched episode
+                        const episodeEl = container.querySelector(`[data-episode-index="${i}"]`);
+                        if (episodeEl) {
+                            selectEpisode(seasonNumber, i, episodeEl);
+                            selectedEpisode = true;
+                        }
+                        break;
+                    }
+                }
+                
+                // If all episodes watched, select first episode
+                if (!selectedEpisode && data.episodes.length > 0) {
+                    const firstEpisodeEl = container.querySelector('[data-episode-index="0"]');
+                    if (firstEpisodeEl) {
+                        selectEpisode(seasonNumber, 0, firstEpisodeEl);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading episodes:', error);
+                container.innerHTML = `
+                    <div class="no-content">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Ошибка загрузки серий</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Select episode
+        function selectEpisode(seasonNumber, index, element) {
+            // Remove active class from all episodes
+            document.querySelectorAll('.episode-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // Add active class to selected episode
+            element.classList.add('active');
+
+            // Store current episode
+            const episodes = seasonsData[seasonNumber];
+            if (episodes && episodes[index]) {
+                currentEpisode = episodes[index];
+                showEpisodeInfo(episodes[index], seasonNumber);
+            }
+        }
+
+        // Show episode info
+        function showEpisodeInfo(episode, seasonNumber) {
+            const episodeNum = episode.episode_number;
+            const airDate = episode.air_date || 'Дата выхода неизвестна';
+            const rating = episode.vote_average > 0 ? episode.vote_average : 'N/A';
+            const runtime = episode.runtime ? `${episode.runtime} мин` : 'N/A';
+            const overview = episode.overview || 'Описание отсутствует';
+
+            const container = document.getElementById('episodeInfo');
+            container.innerHTML = `
+                <div class="episode-details">
+                    <div class="episode-details-header">
+                        <span class="episode-number">S${seasonNumber.toString().padStart(2, '0')}E${episodeNum.toString().padStart(2, '0')}</span>
+                        <h3>${episode.name}</h3>
+                        <div class="episode-meta-details">
+                            <span><i class="fas fa-calendar"></i> ${airDate}</span>
+                            <span><i class="fas fa-clock"></i> ${runtime}</span>
+                            <span class="rating"><i class="fas fa-star"></i> ${rating}</span>
+                        </div>
+                    </div>
+                    <div class="episode-description">
+                        <h4><i class="fas fa-align-left"></i> Описание</h4>
+                        <p>${overview}</p>
+                    </div>
+                </div>
+            `;
+            
+            // Show watch button
+            const watchButtonContainer = document.getElementById('watchButtonContainer');
+            if (watchButtonContainer) {
+                watchButtonContainer.style.display = 'block';
+            }
+        }
+
+        // Toggle watched episode
+        function toggleWatchedEpisode(btn, episodeKey) {
+            btn.classList.toggle('watched');
+            const icon = btn.querySelector('i');
+            
+            if (btn.classList.contains('watched')) {
+                icon.className = 'fas fa-eye';
+                watchedEpisodes.add(episodeKey);
+                showNotification('Отмечено как просмотренное', 'success');
+            } else {
+                icon.className = 'fas fa-eye-slash';
+                watchedEpisodes.delete(episodeKey);
+                showNotification('Удалено из просмотренных', 'info');
+            }
+            
+            // Save to localStorage
+            saveWatchedEpisodes();
+        }
+
+        // Watch episode
+        function watchEpisode(season, episode) {
+            const query = `${TV_TITLE} S${season.toString().padStart(2, '0')}E${episode.toString().padStart(2, '0')}`;
+            showNotification(`Запуск серии: ${query}...`, 'info');
+            // TODO: Add watch logic here
+            // window.location.href = `/search?q=${encodeURIComponent(query)}`;
+        }
+
+        // Watch current episode
+        function watchCurrentEpisode() {
+            if (currentEpisode) {
+                const season = currentEpisode.season_number;
+                const episode = currentEpisode.episode_number;
+                watchEpisode(season, episode);
+            }
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'info'}-circle"></i><span>${message}</span>`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+    </script>
+</body>
+</html>

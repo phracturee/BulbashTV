@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Избранное - BulbashTV</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* Back button - same style as movie/tv pages */
+        .back-to-prev {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: transparent;
+            color: var(--text-color);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            z-index: 1000;
+        }
+
+        .back-to-prev:hover {
+            color: var(--accent);
+            background: rgba(218, 165, 32, 0.2);
+        }
+    </style>
+</head>
+<body class="category-page">
+    <nav class="sidebar">
+        <ul>
+            <li><a href="/search"><i class="fas fa-search"></i></a></li>
+            <li><a href="/"><i class="fas fa-home"></i></a></li>
+            <li><a href="/favorites" class="active"><i class="fas fa-star"></i></a></li>
+            <li><a href="/history"><i class="fas fa-history"></i></a></li>
+            <li><a href="#"><i class="fas fa-cog"></i></a></li>
+        </ul>
+    </nav>
+
+    <!-- Back button - same style as movie/tv pages -->
+    <a href="javascript:history.back()" class="back-to-prev" title="Назад">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+
+    <main class="category-main">
+        <header class="category-header">
+            <h1><i class="fas fa-star"></i> Избранное</h1>
+        </header>
+
+        <section class="category-content">
+            {% if folders %}
+            <div class="folders-grid">
+                {% for folder_id, folder in folders.items() %}
+                <a href="/favorites/{{ folder_id }}" class="folder-card">
+                    <div class="folder-icon">
+                        {% if folder_id == 'watched' %}
+                        <i class="fas fa-eye"></i>
+                        {% else %}
+                        <i class="fas fa-folder"></i>
+                        {% endif %}
+                        <span class="item-count">{{ folder['items']|length }}</span>
+                    </div>
+                    <h3>{{ folder.name }}</h3>
+                    <p>{{ folder['items']|length }} элементов</p>
+                </a>
+                {% endfor %}
+
+                <div class="folder-card create-folder" onclick="createNewFolder()">
+                    <div class="folder-icon" style="background: rgba(218, 165, 32, 0.2);">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <h3>Создать папку</h3>
+                    <p>Новая коллекция</p>
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-star"></i>
+                <h2>У вас пока нет избранного</h2>
+                <p>Добавляйте фильмы и сериалы в избранное</p>
+                <a href="/" class="btn-primary">Перейти к просмотру</a>
+            </div>
+            {% endif %}
+        </section>
+    </main>
+
+    <!-- Modal for creating folder -->
+    <div id="folderModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>Создать новую папку</h3>
+            <input type="text" id="folderName" placeholder="Название папки" maxlength="50">
+            <div class="modal-buttons">
+                <button onclick="closeModal()" class="btn-secondary">Отмена</button>
+                <button onclick="submitFolder()" class="btn-primary">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function createNewFolder() {
+            document.getElementById('folderModal').style.display = 'flex';
+            document.getElementById('folderName').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('folderModal').style.display = 'none';
+            document.getElementById('folderName').value = '';
+        }
+
+        function submitFolder() {
+            const name = document.getElementById('folderName').value.trim();
+            if (!name) {
+                showNotification('Введите название папки', 'error');
+                return;
+            }
+
+            fetch('/api/favorites/folders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Папка создана!', 'success');
+                    // Add folder to grid without reload
+                    addFolderToGrid(data.folder_id, data.name, 0);
+                    closeModal();
+                } else {
+                    showNotification(data.message || 'Ошибка', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Ошибка при создании', 'error');
+            });
+        }
+
+        function addFolderToGrid(folderId, name, itemCount) {
+            const grid = document.querySelector('.folders-grid');
+            if (!grid) return;
+
+            const folderCard = document.createElement('a');
+            folderCard.href = `/favorites/${folderId}`;
+            folderCard.className = 'folder-card';
+            folderCard.innerHTML = `
+                <div class="folder-icon">
+                    <i class="fas fa-folder"></i>
+                    <span class="item-count">${itemCount}</span>
+                </div>
+                <h3>${name}</h3>
+                <p>${itemCount} элементов</p>
+            `;
+
+            // Insert before "Create folder" card
+            const createCard = grid.querySelector('.create-folder');
+            if (createCard) {
+                grid.insertBefore(folderCard, createCard);
+            } else {
+                grid.appendChild(folderCard);
+            }
+        }
+
+        function removeFolderFromGrid(folderId) {
+            const folderCard = document.querySelector(`.folder-card[href="/favorites/${folderId}"]`);
+            if (folderCard) {
+                folderCard.remove();
+            }
+        }
+
+        function updateFolderName(folderId, newName) {
+            const folderCard = document.querySelector(`.folder-card[href="/favorites/${folderId}"]`);
+            if (folderCard) {
+                const nameEl = folderCard.querySelector('h3');
+                if (nameEl) {
+                    nameEl.textContent = newName;
+                }
+            }
+        }
+
+        // Close modal on outside click
+        document.getElementById('folderModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // Submit on Enter
+        document.getElementById('folderName').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') submitFolder();
+        });
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'exclamation'}-circle"></i><span>${message}</span>`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+    </script>
+</body>
+</html>

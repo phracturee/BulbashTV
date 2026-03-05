@@ -18,16 +18,19 @@
 ## 🎬 Возможности
 
 - **Каталог фильмов и сериалов** — получение данных из TMDB с поддержкой русского языка
+- **Страница сезонов и серий** — удобный выбор серий для сериалов с описанием, рейтингом и датой выхода
 - **Поиск торрентов** — интеграция с 15+ трекерами:
   - Международные: YTS, TPB, 1337x, SolidTorrents, Nyaa.si
-  - Русские: RuTracker, Rutor, Kinozal (требуется Jackett или прямая интеграция)
+  - Русские: RuTracker (прямая интеграция, до 500 результатов), Rutor, Kinozal
   - Агрегаторы: TorrentsAPI, BT4G, MagnetDL
+- **Пагинация результатов** — постепенная загрузка торрентов (по 30 результатов с кнопкой "Показать ещё")
 - **Избранное** — организация контента по папкам
-- **История просмотра** — отслеживание просмотренного контента
+- **Просмотренное** — отслеживание просмотренных фильмов и серий
 - **История поиска** — сохранение поисковых запросов
-- **Стриминг торрентов** — воспроизведение через webtorrent-cli + mpv
+- **Стриминг торрентов** — воспроизведение через striming-torrent-mpv + mpv
 - **Кэширование изображений** — локальное кэширование постеров
 - **Приоритизация торрентов** — запоминание выбранных раздач
+- **Прозрачный интерфейс** — современный дизайн с закруглёнными элементами и фоновыми изображениями
 
 ## 🏗 Архитектура
 
@@ -54,9 +57,15 @@
                             ▼
         ┌───────────────────────────────────────┐
         │  Parsers (BaseSpider + конкретные)    │
-        │  - RutrackerSpider                    │
+        │  - RutrackerSpider (многостраничный)  │
         │  - RutorSpider                        │
         │  - KinozalSpider                      │
+        └───────────────────────────────────────┘
+                            │
+                            ▼
+        ┌───────────────────────────────────────┐
+        │  striming-torrent-mpv/                │
+        │  - Стриминг торрентов через MPV       │
         └───────────────────────────────────────┘
 ```
 
@@ -67,30 +76,36 @@
 | `BulbashTVApp` | Основной класс приложения, фабрика Flask |
 | `TMDBClient` | Клиент для работы с TMDB API |
 | `DataManager` | Базовый класс для управления данными |
-| `FavoritesManager` | Управление избранным |
-| `HistoryManager` | Управление историей |
+| `FavoritesManager` | Управление избранным (папки) |
+| `HistoryManager` | Управление историей поиска |
 | `MediaFormatter` | Форматирование данных для шаблонов |
 | `ImageCache` | Кэширование изображений |
 | `TorrentManager` | Управление поиском и стримингом торрентов |
 | `TorrentSearcher` | Поиск по трекерам |
 | `TorrentResult` | Модель результата поиска |
 | `BaseSpider` | Базовый класс для парсеров |
+| `RutrackerSpider` | Парсер RuTracker с поддержкой пагинации (до 10 страниц) | |
 
 ## 📦 Установка
 
 ### 1. Клонирование репозитория
 
 ```bash
-cd /path/to/project
+git clone <repository-url>
+cd BulbashTV
 ```
 
 ### 2. Установка Python зависимостей
+
+**Важно:** Установите все зависимости самостоятельно:
 
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 3. Установка Node.js зависимостей
+
+**Важно:** Установите все зависимости самостоятельно:
 
 ```bash
 npm install
@@ -101,6 +116,24 @@ npm install
 ```bash
 cp config.py.example config.py
 # Отредактируйте config.py, добавив ваши API ключи
+```
+
+### 5. Настройка striming-torrent-mpv
+
+Стриминг использует `striming-torrent-mpv` для воспроизведения:
+
+```bash
+cd striming-torrent-mpv
+npm install
+```
+
+Убедитесь, что установлен `mpv`:
+```bash
+# Ubuntu/Debian
+sudo apt install mpv
+
+# macOS
+brew install mpv
 ```
 
 ## ⚙️ Настройка
@@ -226,7 +259,8 @@ python app.py
 ```
 BulbashTV/
 ├── app.py                      # Основной файл приложения
-├── config.py                   # Конфигурация
+├── config.py                   # Конфигурация (не хранить в git)
+├── config.py.example           # Шаблон конфигурации
 ├── torrent_search.py           # Поиск торрентов
 ├── requirements.txt            # Python зависимости
 ├── package.json                # Node.js зависимости
@@ -241,14 +275,33 @@ BulbashTV/
 ├── parsers/
 │   ├── __init__.py            # Базовый класс Spider
 │   ├── rutor.py               # Парсер Rutor
-│   ├── rutracker.py           # Парсер Rutracker
+│   ├── rutracker.py           # Парсер RuTracker (многостраничный)
 │   └── kinozal.py             # Парсер Kinozal
 ├── utils/
 │   └── http.py                # HTTP утилиты
+├── striming-torrent-mpv/      # Стриминг торрентов
+│   ├── server.js              # Сервер стриминга
+│   └── downloads/             # Загруженные торренты
 ├── templates/                  # HTML шаблоны
+│   ├── index.html             # Главная страница
+│   ├── movie.html             # Страница фильма/сериала
+│   ├── tv_episodes.html       # Страница серий сериала
+│   ├── category.html          # Каталог
+│   ├── search.html            # Поиск
+│   ├── favorites.html         # Избранное
+│   └── folder_items.html      # Элементы папки
 ├── static/                     # Статические файлы
-├── data/                       # Данные приложения
-└── cookies/                    # Cookies трекеров
+│   ├── css/style.css          # Основные стили
+│   └── img/                   # Кэшированные изображения
+├── data/                       # Данные приложения (не хранить в git)
+│   ├── favorites.json         # Избранное
+│   ├── search_history.json    # История поиска
+│   ├── selected_torrents.json # Выбранные торренты
+│   └── torrent_cache.json     # Кэш поиска
+├── logs/                       # Логи (не хранить в git)
+│   └── app.log                # Лог приложения
+├── downloads/                  # Загрузки (не хранить в git)
+└── cookies/                    # Cookies трекеров (не хранить в git)
 ```
 
 ## 📋 Требования
@@ -256,16 +309,19 @@ BulbashTV/
 ### Обязательные
 
 - **Python 3.9+**
-- **Node.js 16+** (для webtorrent-cli)
-- **TMDB API ключ**
+- **Node.js 16+** (для striming-torrent-mpv и webtorrent-cli)
+- **TMDB API ключ** (получить на https://www.themoviedb.org/settings/api)
+- **mpv** (для воспроизведения видео)
 
 ### Опциональные
 
-- **Jackett** — для доступа к русским трекерам
+- **Jackett** — для доступа к дополнительным трекерам
 - **Tor** — для анонимного поиска
-- **mpv** — для воспроизведения видео
+- **Git** — для клонирования репозитория
 
 ### Python зависимости
+
+Все зависимости указаны в `requirements.txt`:
 
 ```
 flask>=3.0.0
@@ -275,12 +331,26 @@ beautifulsoup4>=4.12.0
 lxml>=4.9.0
 ```
 
+**Установка:**
+```bash
+pip install -r requirements.txt
+```
+
 ### Node.js зависимости
+
+Все зависимости указаны в `package.json`:
 
 ```
 webtorrent
 webtorrent-cli
 ```
+
+**Установка:**
+```bash
+npm install
+```
+
+**Важно:** Зависимости не включены в репозиторий. Пользователь должен установить их самостоятельно.
 
 ## 🔍 Диагностика
 
@@ -317,15 +387,16 @@ curl "http://localhost:5000/api/torrents/search?q=test"
 1. Проверьте DNS: `nslookup api.themoviedb.org`
 2. Используйте VPN или Tor
 3. Смените DNS на `8.8.8.8` или `1.1.1.1`
+4. Проверьте API ключ в `config.py`
 
 ### Не работают русские трекеры
 
 **Проблема:** Поиск не находит русский контент
 
 **Решение:**
-1. Установите и настройте Jackett
-2. Добавьте RuTracker, Kinozal в Jackett
-3. Укажите API ключ в `config.py`
+1. RuTracker интегрирован напрямую (требуется авторизация)
+2. Настройте Jackett для дополнительных трекеров
+3. Добавьте API ключ Jackett в `config.py`
 
 ### Ошибки при стриминге
 
@@ -333,8 +404,36 @@ curl "http://localhost:5000/api/torrents/search?q=test"
 
 **Решения:**
 1. Убедитесь, что установлен `mpv`: `sudo apt install mpv`
-2. Проверьте логи: `cat /tmp/webtorrent.log`
-3. Обновите webtorrent-cli: `npm update webtorrent-cli`
+2. Проверьте логи striming-torrent-mpv: `cat /tmp/striming-torrent-mpv.log`
+3. Проверьте логи приложения: `cat logs/app.log`
+4. Обновите зависимости: `npm update`
+
+### Проблемы с производительностью
+
+**Проблема:** Медленная загрузка торрентов
+
+**Решения:**
+1. Уменьшите `max_pages` для RuTracker в `torrent_search.py`
+2. Используйте кэширование поиска (включено по умолчанию)
+3. Настройте прокси или VPN для ускорения
+
+### Ошибка "No module named ..."
+
+**Проблема:** Не установлены Python зависимости
+
+**Решение:**
+```bash
+pip install -r requirements.txt
+```
+
+### Ошибка "Cannot find module ..."
+
+**Проблема:** Не установлены Node.js зависимости
+
+**Решение:**
+```bash
+npm install
+```
 
 ## 📝 Лицензия
 

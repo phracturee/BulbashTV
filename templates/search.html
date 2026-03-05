@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поиск - BulbashTV</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body class="category-page">
+    <nav class="sidebar">
+        <ul>
+            <li><a href="/search" class="active"><i class="fas fa-search"></i></a></li>
+            <li><a href="/"><i class="fas fa-home"></i></a></li>
+            <li><a href="/favorites"><i class="fas fa-star"></i></a></li>
+            <li><a href="/history"><i class="fas fa-history"></i></a></li>
+            <li><a href="#"><i class="fas fa-cog"></i></a></li>
+        </ul>
+    </nav>
+
+    <main class="category-main">
+        <header class="category-header" style="justify-content: center; border-bottom: none; margin-bottom: 0; flex-direction: column; align-items: center; gap: 0;">
+            <div class="search-container" style="width: 100%; max-width: 700px;">
+                <div class="search-form">
+                    <div class="search-input-wrapper" style="width: 100%;">
+                        <i class="fas fa-search search-icon"></i>
+                        <input 
+                            type="text" 
+                            class="search-input" 
+                            placeholder="Поиск фильмов и сериалов..." 
+                            autocomplete="off"
+                            id="searchInput"
+                        >
+                        <button type="button" class="clear-search" id="clearSearchBtn" onclick="clearSearch()" style="display: none;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search History (shown when no input) -->
+            <div id="searchHistorySection" style="width: 100%; max-width: 700px; margin-top: 10px;">
+                {% if search_history %}
+                <div class="search-history-list">
+                    {% for search in search_history %}
+                    <div class="search-history-item-wrapper">
+                        <a href="/search?q={{ search.query|urlencode }}" class="search-history-item" onclick="return false;" data-query="{{ search.query }}">
+                            <i class="fas fa-clock"></i>
+                            <span class="search-query">{{ search.query }}</span>
+                        </a>
+                        <button class="delete-history-btn" onclick="deleteSearchHistoryItem('{{ search.query }}', this)" title="Удалить из истории">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state" id="emptyState" style="padding: 40px 0;">
+                    <i class="fas fa-search" style="font-size: 3rem; color: var(--accent); margin-bottom: 15px;"></i>
+                    <h2 style="font-size: 1.5rem; margin-bottom: 10px;">Начните поиск</h2>
+                    <p style="color: #888;">Введите название фильма или сериала</p>
+                </div>
+                {% endif %}
+            </div>
+        </header>
+
+        <!-- Dynamic Search Results (hidden by default) -->
+        <section class="category-content" id="searchResultsSection" style="display: none;">
+            <div class="section-header">
+                <h3 id="resultsTitle">Результаты поиска</h3>
+            </div>
+            <div class="grid-list" id="dynamicResultsGrid">
+                <!-- Results will be inserted here dynamically -->
+            </div>
+            <div class="empty-state" id="noResultsState" style="display: none;">
+                <i class="fas fa-search"></i>
+                <h2>Ничего не найдено</h2>
+                <p>Попробуйте изменить запрос</p>
+            </div>
+            <!-- Loading indicator for infinite scroll -->
+            <div id="loadingIndicator" class="loading-indicator" style="display: none; text-align: center; padding: 30px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--accent);"></i>
+                <p style="color: #888; margin-top: 10px;">Загрузка...</p>
+            </div>
+            <!-- No more results message -->
+            <div id="noMoreResults" class="no-more-items" style="display: none; text-align: center; padding: 30px; color: #888;">
+                <p>Больше нет результатов</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let searchTimeout = null;
+        const searchInput = document.getElementById('searchInput');
+        const clearSearchBtn = document.getElementById('clearSearchBtn');
+        const searchHistorySection = document.getElementById('searchHistorySection');
+        const searchResultsSection = document.getElementById('searchResultsSection');
+        const dynamicResultsGrid = document.getElementById('dynamicResultsGrid');
+        const noResultsState = document.getElementById('noResultsState');
+        const resultsTitle = document.getElementById('resultsTitle');
+        
+        // Items data for favorites
+        let itemsData = {};
+        
+        // Infinite scroll variables
+        let currentPage = 1;
+        let isLoading = false;
+        let hasMoreResults = true;
+        let currentQuery = '';
+        
+        // Focus on search input on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            searchInput.focus();
+            
+            // Add click handlers for search history items
+            document.querySelectorAll('.search-history-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const query = this.getAttribute('data-query');
+                    searchInput.value = query;
+                    clearSearchBtn.style.display = 'flex';
+                    // Hide history and show results
+                    searchHistorySection.style.display = 'none';
+                    searchResultsSection.style.display = 'block';
+                    performSearch(query, 1, false);
+                });
+            });
+        });
+        
+        // Search input handler with debounce
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            
+            // Show/hide clear button
+            clearSearchBtn.style.display = query ? 'flex' : 'none';
+            
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
+            if (query.length === 0) {
+                // Show history, hide results
+                searchHistorySection.style.display = 'block';
+                searchResultsSection.style.display = 'none';
+                return;
+            }
+            
+            // Hide history, will show results after search
+            searchHistorySection.style.display = 'none';
+            
+            // Debounce search (wait 300ms after user stops typing)
+            searchTimeout = setTimeout(() => {
+                performSearch(query, 1, false);
+            }, 300);
+        });
+        
+        function performSearch(query, page = 1, append = false) {
+            if (!query) return;
+            
+            // Reset variables for new search
+            if (page === 1) {
+                currentPage = 1;
+                hasMoreResults = true;
+                currentQuery = query;
+                document.getElementById('noMoreResults').style.display = 'none';
+                resultsTitle.textContent = `Результаты поиска: "${query}"`;
+            }
+            
+            if (isLoading || !hasMoreResults) return;
+            
+            isLoading = true;
+            document.getElementById('loadingIndicator').style.display = 'block';
+            
+            fetch(`/api/search?q=${encodeURIComponent(query)}&page=${page}`)
+                .then(r => r.json())
+                .then(data => {
+                    // Update items data for favorites
+                    data.items.forEach(item => {
+                        itemsData[item.id] = item;
+                    });
+                    
+                    // Display results
+                    if (append) {
+                        appendResults(data.items);
+                    } else {
+                        displayResults(data.items);
+                    }
+                    
+                    // Check if there are more results
+                    if (data.items.length === 0) {
+                        hasMoreResults = false;
+                        if (page > 1) {
+                            document.getElementById('noMoreResults').style.display = 'block';
+                        }
+                    }
+                    
+                    currentPage = page;
+                    
+                    // Save to search history only on first page
+                    if (page === 1) {
+                        saveToHistory(query);
+                        
+                        // Auto-load more if page is not scrollable enough
+                        setTimeout(() => {
+                            const documentHeight = Math.max(
+                                document.body.scrollHeight,
+                                document.documentElement.scrollHeight
+                            );
+                            const windowHeight = window.innerHeight;
+                            console.log(`Auto-load check: docHeight=${documentHeight}, winHeight=${windowHeight}`);
+                            if (documentHeight <= windowHeight + 100 && hasMoreResults && data.items.length >= 20) {
+                                console.log('Auto-loading more results...');
+                                performSearch(currentQuery, currentPage + 1, true);
+                            }
+                        }, 300);
+                    }
+                })
+                .catch(error => {
+                    console.error('Search error:', error);
+                    showNotification('Ошибка поиска', 'error');
+                })
+                .finally(() => {
+                    isLoading = false;
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    
+                    // Hide sentinel if no more results
+                    const sentinel = document.getElementById('scrollSentinel');
+                    if (sentinel && !hasMoreResults) {
+                        sentinel.style.display = 'none';
+                    }
+                });
+        }
+        
+        function openItem(id) {
+            const item = itemsData[id];
+            if (!item) return;
+            
+            // Determine URL based on media type
+            let url;
+            if (item.url) {
+                url = item.url;
+            } else if (item.original_media_type) {
+                url = `/${item.original_media_type}/${id}`;
+            } else {
+                // Fallback: determine from media_type string
+                const mediaType = item.media_type || '';
+                if (mediaType === 'Фильм' || mediaType === 'movie') {
+                    url = `/movie/${id}`;
+                } else {
+                    url = `/tv/${id}`;
+                }
+            }
+            
+            window.location.href = url;
+        }
+        
+        function appendResults(items) {
+            if (items.length === 0) return;
+            
+            items.forEach(item => {
+                const posterPath = item.poster_path || item.backdrop_path || '';
+                const releaseDate = item.release_date || item.first_air_date || '';
+                const isFavorite = item.is_favorite ? 'active' : '';
+                const heartIcon = item.is_favorite ? 'fas' : 'far';
+                const titleText = item.is_favorite ? 'В избранном' : 'В избранное';
+                
+                const html = `
+                    <div class="grid-item" data-id="${item.id}" onclick="openItem(${item.id})" style="cursor: pointer;">
+                        <div class="grid-item-thumbnail">
+                            ${posterPath ? `<img src="${posterPath}" alt="${item.title}">` : `<img src="https://placehold.co/200x300/333333/FFFFFF?text=${item.title.substring(0, 15)}" alt="${item.title}">`}
+                            ${item.media_type ? `<span class="media-badge">${item.media_type}</span>` : ''}
+                            <button class="watched-btn ${item.is_watched ? 'active' : ''}" onclick="event.stopPropagation(); toggleWatched(${item.id})" title="${item.is_watched ? 'Просмотрено' : 'Отметить как просмотренное'}">
+                                <i class="${item.is_watched ? 'fas' : 'far'} fa-eye${item.is_watched ? '' : '-slash'}"></i>
+                            </button>
+                            <button class="favorite-btn ${isFavorite}" onclick="event.stopPropagation(); toggleFavorite(${item.id})" title="${titleText}">
+                                <i class="${heartIcon} fa-heart"></i>
+                            </button>
+                            <button class="watched-btn ${item.is_watched ? 'active' : ''}" onclick="event.stopPropagation(); toggleWatched(${item.id})" title="${item.is_watched ? 'Просмотрено' : 'Отметить как просмотренное'}">
+                                <i class="${item.is_watched ? 'fas' : 'far'} fa-eye${item.is_watched ? '' : '-slash'}"></i>
+                            </button>
+                            <button class="favorite-btn-placeholder"
+                                <i class="${heartIcon} fa-heart"></i>
+                            </button>
+                        </div>
+                        <div class="grid-item-info">
+                            <h3>${item.title}</h3>
+                            <div class="grid-item-meta">
+                                <span>${releaseDate}</span>
+                                <span><i class="fas fa-star"></i> ${item.vote_average}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                dynamicResultsGrid.insertAdjacentHTML('beforeend', html);
+                
+                // Store in itemsData for openItem function
+                itemsData[item.id] = item;
+            });
+        }
+        
+        // Infinite scroll handler
+        let scrollTimeout;
+        function handleScroll() {
+            console.log('Scroll event fired!');
+            
+            if (scrollTimeout) return;
+            
+            scrollTimeout = setTimeout(() => {
+                scrollTimeout = null;
+                
+                if (isLoading || !hasMoreResults || !currentQuery) {
+                    console.log('Skipping load:', { isLoading, hasMoreResults, currentQuery });
+                    return;
+                }
+                if (searchResultsSection.style.display === 'none') {
+                    console.log('Results section hidden');
+                    return;
+                }
+                
+                const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+                const windowHeight = window.innerHeight;
+                const documentHeight = Math.max(
+                    document.body.scrollHeight,
+                    document.documentElement.scrollHeight,
+                    document.body.offsetHeight,
+                    document.documentElement.offsetHeight
+                );
+                const scrollBottom = scrollTop + windowHeight;
+                const scrollPercent = ((scrollBottom / documentHeight) * 100).toFixed(1);
+                
+                console.log(`Scroll debug: ${scrollPercent}% | Top: ${scrollTop} | Bottom: ${scrollBottom} | DocHeight: ${documentHeight}`);
+                
+                // Load more when user scrolls to 80% of the page (or within 500px of bottom)
+                const threshold = Math.min(documentHeight * 0.8, documentHeight - 500);
+                if (scrollBottom >= threshold) {
+                    console.log('Loading more results! Page:', currentPage + 1);
+                    performSearch(currentQuery, currentPage + 1, true);
+                }
+            }, 100);
+        }
+        
+        // Listen on window (primary scroll element)
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        
+        // Also listen on document.body as fallback
+        document.body.addEventListener('scroll', handleScroll, { passive: true });
+        
+        // Intersection Observer for infinite scroll (more reliable than scroll events)
+        let scrollObserver = null;
+        function setupInfiniteScroll() {
+            // Remove old observer if exists
+            if (scrollObserver) {
+                scrollObserver.disconnect();
+            }
+            
+            // Create sentinel element
+            let sentinel = document.getElementById('scrollSentinel');
+            if (!sentinel) {
+                sentinel = document.createElement('div');
+                sentinel.id = 'scrollSentinel';
+                sentinel.style.height = '10px';
+                sentinel.style.marginTop = '50px';
+                searchResultsSection.appendChild(sentinel);
+            }
+            
+            // Setup observer
+            scrollObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && !isLoading && hasMoreResults && currentQuery) {
+                        console.log('Sentinel visible, loading more...');
+                        performSearch(currentQuery, currentPage + 1, true);
+                    }
+                });
+            }, {
+                root: null,
+                rootMargin: '100px',
+                threshold: 0
+            });
+            
+            scrollObserver.observe(sentinel);
+            console.log('Infinite scroll observer setup');
+        }
+        
+        // Setup observer when search results are shown
+        document.addEventListener('DOMContentLoaded', function() {
+            // Also setup observer if results are already visible
+            if (searchResultsSection.style.display !== 'none' && currentQuery) {
+                setupInfiniteScroll();
+            }
+        });
+        
+        function displayResults(items) {
+            searchResultsSection.style.display = 'block';
+            dynamicResultsGrid.innerHTML = '';
+            document.getElementById('loadingIndicator').style.display = 'none';
+            document.getElementById('noMoreResults').style.display = 'none';
+            
+            // Setup infinite scroll observer
+            setupInfiniteScroll();
+            
+            if (items.length === 0) {
+                dynamicResultsGrid.style.display = 'none';
+                noResultsState.style.display = 'block';
+                return;
+            }
+            
+            dynamicResultsGrid.style.display = 'grid';
+            noResultsState.style.display = 'none';
+            
+            items.forEach(item => {
+                const posterPath = item.poster_path || item.backdrop_path || '';
+                const releaseDate = item.release_date || item.first_air_date || '';
+                const isFavorite = item.is_favorite ? 'active' : '';
+                const heartIcon = item.is_favorite ? 'fas' : 'far';
+                const titleText = item.is_favorite ? 'В избранном' : 'В избранное';
+                
+                const html = `
+                    <div class="grid-item" data-id="${item.id}" onclick="openItem(${item.id})" style="cursor: pointer;">
+                        <div class="grid-item-thumbnail">
+                            ${posterPath ? `<img src="${posterPath}" alt="${item.title}">` : `<img src="https://placehold.co/200x300/333333/FFFFFF?text=${item.title.substring(0, 15)}" alt="${item.title}">`}
+                            ${item.media_type ? `<span class="media-badge">${item.media_type}</span>` : ''}
+                            <button class="watched-btn ${item.is_watched ? 'active' : ''}" onclick="event.stopPropagation(); toggleWatched(${item.id})" title="${item.is_watched ? 'Просмотрено' : 'Отметить как просмотренное'}">
+                                <i class="${item.is_watched ? 'fas' : 'far'} fa-eye${item.is_watched ? '' : '-slash'}"></i>
+                            </button>
+                            <button class="favorite-btn ${isFavorite}" onclick="event.stopPropagation(); toggleFavorite(${item.id})" title="${titleText}">
+                                <i class="${heartIcon} fa-heart"></i>
+                            </button>
+                            <button class="watched-btn ${item.is_watched ? 'active' : ''}" onclick="event.stopPropagation(); toggleWatched(${item.id})" title="${item.is_watched ? 'Просмотрено' : 'Отметить как просмотренное'}">
+                                <i class="${item.is_watched ? 'fas' : 'far'} fa-eye${item.is_watched ? '' : '-slash'}"></i>
+                            </button>
+                            <button class="favorite-btn-placeholder"
+                                <i class="${heartIcon} fa-heart"></i>
+                            </button>
+                        </div>
+                        <div class="grid-item-info">
+                            <h3>${item.title}</h3>
+                            <div class="grid-item-meta">
+                                <span>${releaseDate}</span>
+                                <span><i class="fas fa-star"></i> ${item.vote_average}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                dynamicResultsGrid.insertAdjacentHTML('beforeend', html);
+                
+                // Store in itemsData for openItem function
+                itemsData[item.id] = item;
+            });
+        }
+        
+        function saveToHistory(query) {
+            // Check if query already exists in history
+            const existingItems = document.querySelectorAll('.search-history-item');
+            for (let item of existingItems) {
+                if (item.getAttribute('data-query') === query) {
+                    // Move to top if already exists
+                    const wrapper = item.closest('.search-history-item-wrapper');
+                    const list = document.querySelector('.search-history-list');
+                    list.insertBefore(wrapper, list.firstChild);
+                    return;
+                }
+            }
+            
+            // Create new history item
+            const historyList = document.querySelector('.search-history-list');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'search-history-item-wrapper';
+            wrapper.innerHTML = `
+                <a href="/search?q=${encodeURIComponent(query)}" class="search-history-item" onclick="return false;" data-query="${query}">
+                    <i class="fas fa-clock"></i>
+                    <span class="search-query">${query}</span>
+                </a>
+                <button class="delete-history-btn" onclick="deleteSearchHistoryItem('${query}', this)" title="Удалить из истории">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            // Add click handler
+            wrapper.querySelector('.search-history-item').addEventListener('click', function(e) {
+                e.preventDefault();
+                const q = this.getAttribute('data-query');
+                searchInput.value = q;
+                clearSearchBtn.style.display = 'flex';
+                // Hide history and show results
+                searchHistorySection.style.display = 'none';
+                searchResultsSection.style.display = 'block';
+                performSearch(q, 1, false);
+            });
+            
+            // Insert at the beginning
+            if (historyList) {
+                historyList.insertBefore(wrapper, historyList.firstChild);
+            } else {
+                // If no history list exists, create one
+                createHistoryList(wrapper);
+            }
+            
+            // Remove empty state if exists
+            const emptyState = document.getElementById('emptyState');
+            if (emptyState) {
+                emptyState.remove();
+            }
+        }
+        
+        function createHistoryList(firstItem) {
+            const historySection = document.getElementById('searchHistorySection');
+            const list = document.createElement('div');
+            list.className = 'search-history-list';
+            list.appendChild(firstItem);
+            historySection.appendChild(list);
+        }
+        
+        function clearSearch() {
+            searchInput.value = '';
+            searchInput.focus();
+            clearSearchBtn.style.display = 'none';
+            searchHistorySection.style.display = 'block';
+            searchResultsSection.style.display = 'none';
+        }
+        
+        function clearSearchHistory() {
+            if (confirm('Очистить историю поиска?')) {
+                fetch('/api/search/history/clear', { method: 'DELETE' })
+                    .then(() => {
+                        location.reload();
+                    })
+                    .catch(() => {
+                        showNotification('Ошибка при очистке', 'error');
+                    });
+            }
+        }
+        
+        function deleteSearchHistoryItem(query, btnElement) {
+            fetch(`/api/search/history/${encodeURIComponent(query)}`, { method: 'DELETE' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove the history item from DOM with animation
+                        const wrapper = btnElement.closest('.search-history-item-wrapper');
+                        wrapper.style.transition = 'all 0.3s ease';
+                        wrapper.style.opacity = '0';
+                        wrapper.style.transform = 'translateX(-20px)';
+                        setTimeout(() => {
+                            wrapper.remove();
+                            // Check if no more history items
+                            const remainingItems = document.querySelectorAll('.search-history-item-wrapper');
+                            if (remainingItems.length === 0) {
+                                location.reload();
+                            }
+                        }, 300);
+                        showNotification('Поиск удален из истории', 'success');
+                    }
+                })
+                .catch(() => {
+                    showNotification('Ошибка при удалении', 'error');
+                });
+        }
+        
+        // Favorites functionality
+        function toggleFavorite(id) {
+            const item = itemsData[id];
+            if (!item) return;
+            
+            fetch(`/api/favorites/check/${id}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.is_favorite) {
+                        showFolderSelectionModal(id, data.folders, true);
+                    } else {
+                        showFolderSelectionModal(id, [], false);
+                    }
+                });
+        }
+        
+        function showFolderSelectionModal(itemId, currentFolders, isRemove) {
+            const existingModal = document.getElementById('folderSelectionModal');
+            if (existingModal) existingModal.remove();
+            
+            fetch('/api/favorites/folders')
+                .then(r => r.json())
+                .then(data => {
+                    const modal = document.createElement('div');
+                    modal.id = 'folderSelectionModal';
+                    modal.className = 'modal folder-selection-modal';
+                    
+                    let foldersHtml = '';
+                    data.folders.forEach(folder => {
+                        const isInFolder = currentFolders.includes(folder.id);
+                        foldersHtml += `
+                            <div class="folder-option ${isInFolder ? 'in-folder' : ''}" onclick="${isRemove && isInFolder ? `removeFromFolder('${folder.id}', ${itemId})` : `addToFolder('${folder.id}', ${itemId})`}">
+                                <i class="fas fa-folder${isInFolder ? '' : '-open'}"></i>
+                                <div class="folder-option-info">
+                                    <h4>${folder.name}</h4>
+                                    <span>${folder.item_count} элементов</span>
+                                </div>
+                                ${isInFolder ? '<i class="fas fa-check" style="color: var(--accent);"></i>' : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    modal.innerHTML = `
+                        <div class="modal-content">
+                            <h3>${isRemove ? 'Удалить из папки' : 'Добавить в избранное'}</h3>
+                            <div class="folder-list">
+                                ${foldersHtml}
+                                <div class="folder-option create-new-folder" onclick="createFolderAndAdd(${itemId})">
+                                    <i class="fas fa-plus-circle"></i>
+                                    <div class="folder-option-info">
+                                        <h4>Создать новую папку</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-buttons">
+                                <button onclick="closeFolderModal()" class="btn-secondary">Отмена</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(modal);
+                    
+                    modal.addEventListener('click', function(e) {
+                        if (e.target === this) closeFolderModal();
+                    });
+                });
+        }
+        
+        function closeFolderModal() {
+            const modal = document.getElementById('folderSelectionModal');
+            if (modal) modal.remove();
+        }
+        
+        function addToFolder(folderId, itemId) {
+            const item = itemsData[itemId];
+            if (!item) return;
+            
+            fetch('/api/favorites/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({...item, folder_id: folderId})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    updateHeartIcon(itemId, true);
+                    showNotification(`Добавлено в "${data.folder_name}"!`, 'success');
+                    closeFolderModal();
+                } else {
+                    showNotification(data.message || 'Ошибка', 'error');
+                }
+            });
+        }
+        
+        function removeFromFolder(folderId, itemId) {
+            fetch(`/api/favorites/remove/${itemId}?folder_id=${folderId}`, { method: 'DELETE' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        if (!data.is_favorite) {
+                            updateHeartIcon(itemId, false);
+                        }
+                        showNotification('Удалено из папки', 'info');
+                        closeFolderModal();
+                    }
+                });
+        }
+        
+        function createFolderAndAdd(itemId) {
+            const existingInput = document.getElementById('inlineFolderInput');
+            if (existingInput) existingInput.remove();
+            
+            const inputDiv = document.createElement('div');
+            inputDiv.id = 'inlineFolderInput';
+            inputDiv.className = 'inline-folder-input';
+            inputDiv.innerHTML = `
+                <div class="folder-input-content">
+                    <input type="text" id="newFolderNameInput" placeholder="Название папки" maxlength="50">
+                    <div class="folder-input-buttons">
+                        <button onclick="cancelFolderInput()" class="btn-secondary">Отмена</button>
+                        <button onclick="submitNewFolder(${itemId})" class="btn-primary">Создать</button>
+                    </div>
+                </div>
+            `;
+            
+            const createOption = document.querySelector('.create-new-folder');
+            if (createOption) {
+                createOption.after(inputDiv);
+            }
+            
+            document.getElementById('newFolderNameInput').focus();
+            
+            document.getElementById('newFolderNameInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') submitNewFolder(itemId);
+            });
+        }
+        
+        function cancelFolderInput() {
+            const inputDiv = document.getElementById('inlineFolderInput');
+            if (inputDiv) inputDiv.remove();
+        }
+        
+        function submitNewFolder(itemId) {
+            const nameInput = document.getElementById('newFolderNameInput');
+            const name = nameInput.value.trim();
+            
+            if (!name) {
+                showNotification('Введите название папки', 'error');
+                return;
+            }
+            
+            fetch('/api/favorites/folders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    cancelFolderInput();
+                    addToFolder(data.folder_id, itemId);
+                } else {
+                    showNotification(data.message || 'Ошибка', 'error');
+                }
+            });
+        }
+        
+        function updateHeartIcon(id, isFavorite) {
+            const buttons = document.querySelectorAll(`button[onclick="toggleFavorite(${id})"]`);
+            buttons.forEach(btn => {
+                const icon = btn.querySelector('i');
+                if (isFavorite) {
+                    btn.classList.add('active');
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                    btn.title = 'В избранном';
+                } else {
+                    btn.classList.remove('active');
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                    btn.title = 'В избранное';
+                }
+            });
+        }
+        
+        function showNotification(msg, type) {
+            const div = document.createElement('div');
+            div.className = 'notification ' + type;
+            div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check' : 'info') + '-circle"></i><span>' + msg + '</span>';
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+    </script>
+</body>
+</html>

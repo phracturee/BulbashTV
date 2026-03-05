@@ -1,0 +1,479 @@
+"""
+Torrent manager - uses popcorn-mpv for streaming
+"""
+
+import os
+import re
+import subprocess
+import json
+import time
+from typing import Dict, Any, Optional
+
+from torrent_search import TorrentSearcher
+from config import TORRENT_DOWNLOAD_DIR
+
+
+class TorrentStatus:
+    """Torrent status tracker"""
+
+    def __init__(self):
+        self.status = "idle"
+        self.progress = 0
+        self.speed = "0 MB/s"
+        self.peers = 0
+        self.file = ""
+        self.time = "0:00"
+        self.playback_position = 0  # Current playback position in seconds
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "status": self.status,
+            "progress": self.progress,
+            "speed": self.speed,
+            "peers": self.peers,
+            "file": self.file,
+            "time": self.time,
+            "playback_position": self.playback_position,
+        }
+
+    def update_from_log(self, log_path: str) -> None:
+        """Update status from popcorn-mpv log file"""
+        if not os.path.exists(log_path):
+            return
+
+        try:
+            with open(log_path, "r") as f:
+                content = f.read()
+                lines = content.split('\n')
+                
+                if not lines:
+                    return
+
+                # Get last 50 lines
+                for line in reversed(lines[-50:]):
+                    line = line.strip()
+
+                    # Parse progress percentage
+                    if "%" in line and "Прогресс" in line:
+                        match = re.search(r"Прогресс:\s*(\d+\.?\d*)%", line)
+                        if match:
+                            self.progress = float(match.group(1))
+
+                    # Parse speed
+                    match = re.search(r"((\d+\.?\d*)\s*(MB|KB|GB)/s)", line)
+                    if match:
+                        self.speed = match.group(1)
+
+                    # Parse peers
+                    match = re.search(r"Пиров:\s*(\d+)", line)
+                    if match:
+                        self.peers = int(match.group(1))
+
+                    # Check if streaming
+                    if "Запуск MPV" in line or "MPV запущен" in line:
+                        self.status = "playing"
+                    
+                    # Check if completed
+                    if "100%" in line or "завершено" in line.lower():
+                        self.status = "completed"
+        except Exception as e:
+            print(f"[Status] Error reading log: {e}")
+            pass
+
+    def check_process_running(self) -> None:
+        """Check if popcorn-mpv process is still running"""
+        try:
+            # Check for node server.js process (popcorn-mpv)
+            result = subprocess.run(
+                ["pgrep", "-f", "node.*server.js"], capture_output=True, text=True
+            )
+            node_running = result.returncode == 0
+            
+            # Check for mpv process
+            mpv_result = subprocess.run(
+                ["pgrep", "-f", "mpv"], capture_output=True, text=True
+            )
+            mpv_running = mpv_result.returncode == 0
+            
+            # Consider running if either node or mpv is running
+            if not (node_running or mpv_running):
+                if self.status not in ["stopped", "completed"]:
+                    self.status = "stopped"
+        except:
+            pass
+
+
+class TorrentManager:
+    """Manage torrent search and streaming using popcorn-mpv"""
+
+    SELECTED_TORRENTS_FILE = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "data", "selected_torrents.json"
+    )
+    TORRENT_HISTORY_FILE = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "data", "torrent_history.json"
+    )
+    PLAYBACK_PROGRESS_FILE = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "data", "playback_progress.json"
+    )
+    CACHE_DURATION = 3600  # 1 hour cache
+    POPCORN_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "striming-torrent-mpv")
+    DOWNLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "downloads")
+
+    def __init__(self, project_dir: str):
+        self.project_dir = project_dir
+        self.searcher = TorrentSearcher()
+        self.status = TorrentStatus()
+        self.log_path = "/tmp/striming-torrent-mpv.log"
+        self.current_process = None
+        os.makedirs(os.path.join(self.project_dir, "data"), exist_ok=True)
+        os.makedirs(self.DOWNLOADS_DIR, exist_ok=True)
+
+    def search(self, query: str, use_cache: bool = True) -> list[Dict[str, Any]]:
+        """Search for torrents with caching"""
+        if not query:
+            return []
+
+        cache_key = query.lower().strip()
+
+        # Try to get from cache
+        if use_cache:
+            cache = self._load_torrent_cache()
+            if cache_key in cache and self._is_cache_valid(cache[cache_key]):
+                print(f"[Cache] Hit for query: {query}")
+                results = cache[cache_key].get("results", [])
+                return self._prioritize_selected(results, query)
+            elif cache_key in cache:
+                print(f"[Cache] Expired for query: {query}")
+
+        # Search from scratch
+        print(f"[Search] Searching for: {query}")
+        results = self.searcher.search_all(query)
+
+        if not results:
+            print(f"[Search] No results from trackers for: {query}")
+            results = [
+                {
+                    "title": f"No torrents found for '{query}'",
+                    "year": "",
+                    "quality": "N/A",
+                    "size": "Try another search",
+                    "seeds": 0,
+                    "peers": 0,
+                    "magnet": "",
+                    "tracker": "None",
+                    "type": "error",
+                }
+            ]
+
+        # Save to cache
+        if use_cache and results:
+            cache = self._load_torrent_cache()
+            cache[cache_key] = {
+                "query": query,
+                "results": results,
+                "timestamp": time.time(),
+                "count": len(results),
+            }
+            self._save_torrent_cache(cache)
+            print(f"[Cache] Saved {len(results)} results for: {query}")
+
+        return self._prioritize_selected(results, query)
+
+    def _get_torrent_id(self, magnet: str) -> str:
+        """Generate unique ID from magnet link"""
+        if not magnet:
+            return ""
+        match = re.search(r"btih:([a-fA-F0-9]{40})", magnet)
+        if match:
+            return match.group(1).lower()
+        return ""
+
+    def _load_selected_torrents(self) -> Dict:
+        """Load last selected torrent from file"""
+        if os.path.exists(self.SELECTED_TORRENTS_FILE):
+            try:
+                with open(self.SELECTED_TORRENTS_FILE, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except:
+                pass
+        return {}
+
+    def _save_selected_torrent(self, magnet: str, title: str, query: str):
+        """Save only the last selected torrent"""
+        try:
+            selected = {
+                "magnet": magnet,
+                "title": title,
+                "query": query,
+                "timestamp": time.time(),
+            }
+
+            with open(self.SELECTED_TORRENTS_FILE, "w", encoding="utf-8") as f:
+                json.dump(selected, f, ensure_ascii=False, indent=2)
+            print(f"[TorrentManager] Saved last selected torrent: {title[:50]}...")
+        except Exception as e:
+            print(f"Error saving selected torrent: {e}")
+
+    def _prioritize_selected(self, results: list, query: str) -> list:
+        """Prioritize only the last selected torrent"""
+        selected = self._load_selected_torrents()
+
+        if not selected:
+            for result in results:
+                result["selected"] = False
+                result["selected_at"] = 0
+            return results
+
+        selected_magnet = selected.get("magnet", "")
+        selected_id = self._get_torrent_id(selected_magnet)
+
+        for result in results:
+            magnet = result.get("magnet", "")
+            torrent_id = self._get_torrent_id(magnet)
+
+            if torrent_id and torrent_id == selected_id:
+                result["selected"] = True
+                result["selected_at"] = selected.get("timestamp", 0)
+            else:
+                result["selected"] = False
+                result["selected_at"] = 0
+
+        results.sort(key=lambda x: (not x.get("selected", False), -x.get("seeds", 0)))
+        return results
+
+    def _load_torrent_cache(self) -> Dict:
+        """Load torrent cache from file"""
+        cache_file = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "data", "torrent_cache.json"
+        )
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except:
+                pass
+        return {}
+
+    def _save_torrent_cache(self, cache: Dict):
+        """Save torrent cache to file"""
+        cache_file = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "data", "torrent_cache.json"
+        )
+        try:
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(cache, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Error saving cache: {e}")
+
+    def _is_cache_valid(self, cache_entry: Dict) -> bool:
+        """Check if cache entry is still valid (1 hour)"""
+        if not cache_entry:
+            return False
+        timestamp = cache_entry.get("timestamp", 0)
+        return (time.time() - timestamp) < self.CACHE_DURATION
+
+    def clear_cache(self):
+        """Clear torrent cache"""
+        try:
+            cache_file = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "data", "torrent_cache.json"
+            )
+            if os.path.exists(cache_file):
+                os.remove(cache_file)
+                print("[Cache] Cleared")
+        except Exception as e:
+            print(f"Error clearing cache: {e}")
+
+    # ==================== Playback Progress ====================
+
+    def save_playback_progress(self, magnet: str, position: int, duration: int):
+        """Save playback position for a torrent"""
+        try:
+            progress = self._load_playback_progress()
+            torrent_id = self._get_torrent_id(magnet)
+            
+            if torrent_id:
+                progress[torrent_id] = {
+                    "position": position,
+                    "duration": duration,
+                    "timestamp": time.time(),
+                    "formatted": self._format_time(position),
+                    "formatted_position": self._format_time(position),
+                }
+                
+                with open(self.PLAYBACK_PROGRESS_FILE, "w", encoding="utf-8") as f:
+                    json.dump(progress, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Error saving playback progress: {e}")
+
+    def get_playback_progress(self, magnet: str) -> Dict[str, Any]:
+        """Get playback progress for a torrent"""
+        progress = self._load_playback_progress()
+        torrent_id = self._get_torrent_id(magnet)
+        
+        if torrent_id and torrent_id in progress:
+            return progress[torrent_id]
+        return {"position": 0, "duration": 0, "formatted": "0:00"}
+
+    def _load_playback_progress(self) -> Dict:
+        """Load playback progress from file"""
+        if os.path.exists(self.PLAYBACK_PROGRESS_FILE):
+            try:
+                with open(self.PLAYBACK_PROGRESS_FILE, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except:
+                pass
+        return {}
+
+    def _format_time(self, seconds: int) -> str:
+        """Format seconds to HH:MM (no seconds)"""
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        if hours > 0:
+            return f"{hours}:{minutes:02d}"
+        return f"{minutes}"
+
+    # ==================== History ====================
+
+    def _load_torrent_history(self) -> list:
+        """Load torrent history from file"""
+        if os.path.exists(self.TORRENT_HISTORY_FILE):
+            try:
+                with open(self.TORRENT_HISTORY_FILE, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except:
+                pass
+        return []
+
+    def _save_torrent_history(self, magnet: str, title: str, query: str):
+        """Save to torrent history - only movie title"""
+        try:
+            history = self._load_torrent_history()
+            clean_title = self._extract_movie_title(title, query)
+
+            for item in history:
+                if item.get("title") == clean_title:
+                    history.remove(item)
+                    break
+
+            history.insert(0, {
+                "title": clean_title,
+                "query": query,
+                "timestamp": time.time(),
+                "date": time.strftime("%Y-%m-%d %H:%M:%S"),
+            })
+
+            history = history[:50]
+
+            with open(self.TORRENT_HISTORY_FILE, "w", encoding="utf-8") as f:
+                json.dump(history, f, ensure_ascii=False, indent=2)
+            print(f"[TorrentManager] Saved to history: {clean_title}")
+        except Exception as e:
+            print(f"Error saving to history: {e}")
+
+    def get_torrent_history(self) -> list:
+        """Get torrent history"""
+        return self._load_torrent_history()
+
+    def _extract_movie_title(self, full_title: str, query: str) -> str:
+        """Extract clean movie title from full torrent title"""
+        if query:
+            return query.strip()
+        
+        clean = full_title
+        import re
+        clean = re.sub(r'\b(1080p|720p|2160p|4K|BluRay|WEB-DL|HDRip|DVDRip)\b', '', clean, flags=re.IGNORECASE)
+        clean = re.sub(r'[\[\(]\d{4}[\]\)]', '', clean)
+        clean = re.sub(r'\b\d{3,4}p\b', '', clean, flags=re.IGNORECASE)
+        clean = re.sub(r'\b(x264|x265|h264|h265|HEVC|AVC)\b', '', clean, flags=re.IGNORECASE)
+        clean = re.sub(r'\b(AAC|AC3|DTS|FLAC|MP3)\b', '', clean, flags=re.IGNORECASE)
+        clean = re.sub(r'\b(YTS|YIFY|RARBG|EVO|FGT|Galaxy)\b', '', clean, flags=re.IGNORECASE)
+        clean = clean.strip(' .-_')
+        clean = ' '.join(clean.split())
+        
+        return clean if clean else full_title
+
+    # ==================== Streaming with popcorn-mpv ====================
+
+    def start_streaming(self, magnet: Optional[str] = None, title: str = "", query: str = "") -> tuple[bool, str, str, Dict]:
+        """Start torrent streaming with popcorn-mpv"""
+        print("=" * 50)
+        print("[POPCORN-MPV] Received start request")
+
+        if not magnet:
+            magnet = "magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel"
+
+        print(f"[POPCORN-MPV] Magnet link: {magnet[:50]}...")
+
+        try:
+            # Save to history
+            if title and query:
+                self._save_selected_torrent(magnet, title, query)
+                self._save_torrent_history(magnet, title, query)
+
+            # Kill old processes
+            os.system("pkill -f 'popcorn-mpv' 2>/dev/null || true")
+            os.system("pkill -f 'node.*server.js' 2>/dev/null || true")
+            time.sleep(1)
+
+            # Start popcorn-mpv server
+            cmd = f'cd {self.POPCORN_DIR} && nohup node server.js "{magnet}" > {self.log_path} 2>&1 &'
+            print(f"[POPCORN-MPV] Starting: {cmd}")
+            os.system(cmd)
+            
+            # Wait for server to start (increased to 20 seconds)
+            print("[POPCORN-MPV] Waiting for server to start (20s)...")
+
+            for i in range(20):
+                time.sleep(1)
+                # Check if process started
+                result = subprocess.run(['pgrep', '-f', 'node.*server.js'], capture_output=True, text=True)
+                if result.returncode == 0:
+                    print(f"[POPCORN-MPV] Process started after {i+1} seconds")
+                    # Also check if port 8888 is listening
+                    try:
+                        import socket
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        sock_result = sock.connect_ex(('localhost', 8888))
+                        sock.close()
+                        if sock_result == 0:
+                            print("[POPCORN-MPV] Port 8888 is listening")
+                            self.status.status = "playing"
+                            progress = self.get_playback_progress(magnet)
+                            return True, "Popcorn-MPV started", f"http://localhost:8888/0", progress
+                    except:
+                        pass
+                    # Process exists but port not ready yet, continue waiting
+            
+            # Timeout - check if process exists anyway
+            result = subprocess.run(['pgrep', '-f', 'node.*server.js'], capture_output=True, text=True)
+            if result.returncode == 0:
+                print("[POPCORN-MPV] Process exists, assuming it's working")
+                self.status.status = "playing"
+                progress = self.get_playback_progress(magnet)
+                return True, "Popcorn-MPV started (slow)", f"http://localhost:8888/0", progress
+            
+            print("[POPCORN-MPV] Failed to start process")
+            return False, "Failed to start popcorn-mpv", "", {}
+
+        except Exception as e:
+            print(f"[POPCORN-MPV] Exception: {e}")
+            return False, str(e), "", {}
+
+    def stop_streaming(self) -> bool:
+        """Stop torrent streaming"""
+        try:
+            os.system("pkill -f 'popcorn-mpv' 2>/dev/null || true")
+            os.system("pkill -f 'node.*server.js' 2>/dev/null || true")
+            self.status.status = "stopped"
+            print("[POPCORN-MPV] Stopped")
+            return True
+        except Exception as e:
+            print(f"Error stopping torrent: {e}")
+            return False
+
+    def get_status(self) -> Dict[str, Any]:
+        """Get current torrent status"""
+        self.status.update_from_log(self.log_path)
+        self.status.check_process_running()
+        return self.status.to_dict()

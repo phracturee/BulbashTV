@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - BulbashTV</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* Back button - same style as movie/tv pages */
+        .back-to-prev {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: transparent;
+            color: var(--text-color);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            z-index: 1000;
+        }
+
+        .back-to-prev:hover {
+            color: var(--accent);
+            background: rgba(218, 165, 32, 0.2);
+        }
+
+        /* Category page filters */
+        .filters-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 15px 0;  /* Убрал фон и padding */
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-group label {
+            color: var(--text-color);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-group select {
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            color: var(--text-color);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 150px;
+        }
+
+        .filter-group select:hover {
+            border-color: var(--accent);
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .filter-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* Grid items - original style */
+        .grid-item {
+            transition: all 0.3s;
+        }
+
+        .grid-item:hover {
+            transform: scale(1.03);
+        }
+
+        .grid-item:active {
+            transform: scale(0.98);
+        }
+
+        .grid-item-thumbnail {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .grid-item-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .grid-item-info h3 {
+            font-size: 1rem;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body class="category-page">
+    <nav class="sidebar">
+        <ul>
+            <li><a href="/search"><i class="fas fa-search"></i></a></li>
+            <li><a href="/"><i class="fas fa-home"></i></a></li>
+            <li><a href="/favorites"><i class="fas fa-star"></i></a></li>
+            <li><a href="/history"><i class="fas fa-history"></i></a></li>
+            <li><a href="#"><i class="fas fa-cog"></i></a></li>
+        </ul>
+    </nav>
+
+    <!-- Back button - same style as movie/tv pages -->
+    <a href="javascript:history.back()" class="back-to-prev" title="Назад">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+
+    <main class="category-main">
+        <header class="category-header">
+            <h1><i class="fas fa-{% if category == 'movies' %}film{% elif category == 'tv-shows' %}tv{% else %}fire{% endif %}"></i> {{ title }}</h1>
+        </header>
+
+        {% if genres %}
+        <div class="filters-bar">
+            <div class="filter-group">
+                <label><i class="fas fa-filter"></i> Жанр:</label>
+                <select id="genre-filter" onchange="applyFilters()">
+                    <option value="">Все жанры</option>
+                    {% for genre in genres %}
+                    <option value="{{ genre.id }}" {% if selected_genre == genre.id|string %}selected{% endif %}>{{ genre.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label><i class="fas fa-sort"></i> Сортировка:</label>
+                <select id="sort-filter" onchange="applyFilters()">
+                    <option value="popularity.desc" {% if sort_by == 'popularity.desc' %}selected{% endif %}>Популярность ↓</option>
+                    <option value="popularity.asc" {% if sort_by == 'popularity.asc' %}selected{% endif %}>Популярность ↑</option>
+                    <option value="vote_average.desc" {% if sort_by == 'vote_average.desc' %}selected{% endif %}>Рейтинг ↓</option>
+                    <option value="vote_average.asc" {% if sort_by == 'vote_average.asc' %}selected{% endif %}>Рейтинг ↑</option>
+                    <option value="release_date.desc" {% if sort_by == 'release_date.desc' %}selected{% endif %}>Дата выхода ↓</option>
+                    <option value="release_date.asc" {% if sort_by == 'release_date.asc' %}selected{% endif %}>Дата выхода ↑</option>
+                </select>
+            </div>
+        </div>
+        {% endif %}
+
+        <section class="category-content">
+            {% if items %}
+            <div class="grid-list" id="items-grid">
+                {% for item in items %}
+                <div class="grid-item" data-id="{{ item.id }}" onclick="openItem({{ item.id }})" style="cursor: pointer;">
+                    <div class="grid-item-thumbnail">
+                        {% if item.poster_path %}
+                        <img src="{{ item.poster_path }}" alt="{{ item.title }}">
+                        {% elif item.backdrop_path %}
+                        <img src="{{ item.backdrop_path }}" alt="{{ item.title }}">
+                        {% else %}
+                        <img src="https://placehold.co/200x300/333333/FFFFFF?text={{ item.title[:15] }}" alt="{{ item.title }}">
+                        {% endif %}
+                        {% if item.media_type %}
+                        <span class="media-badge">{{ item.media_type }}</span>
+                        {% endif %}
+                        <button class="favorite-btn {% if item.is_favorite %}active{% endif %}" onclick="event.stopPropagation(); toggleFavorite({{ item.id }})" title="{% if item.is_favorite %}В избранном{% else %}В избранное{% endif %}">
+                            <i class="{% if item.is_favorite %}fas{% else %}far{% endif %} fa-heart"></i>
+                        </button>
+                        <button class="watched-btn {% if item.is_watched %}active{% endif %}" onclick="event.stopPropagation(); toggleWatched({{ item.id }})" title="{% if item.is_watched %}Просмотрено{% else %}Отметить как просмотренное{% endif %}">
+                            <i class="{% if item.is_watched %}fas{% else %}far{% endif %} fa-eye{% if not item.is_watched %}-slash{% endif %}"></i>
+                        </button>
+                    </div>
+                    <div class="grid-item-info">
+                        <h3>{{ item.title }}</h3>
+                        <div class="grid-item-meta">
+                            {% if item.release_date %}
+                            <span class="year">{{ item.release_date }}</span>
+                            {% elif item.first_air_date %}
+                            <span class="year">{{ item.first_air_date }}</span>
+                            {% endif %}
+                            <span class="rating"><i class="fas fa-star"></i> {{ item.vote_average }}</span>
+                        </div>
+                        {% if item.overview %}
+                        <p class="overview">{{ item.overview[:100] }}{% if item.overview|length > 100 %}...{% endif %}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div id="loading-indicator" class="loading-indicator hidden">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Загрузка...</span>
+            </div>
+            
+            <div id="no-more-items" class="no-more-items hidden">
+                <p>Больше нет элементов для загрузки</p>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-film"></i>
+                <h2>Ничего не найдено</h2>
+                <p>Попробуйте изменить параметры фильтра</p>
+                <a href="/" class="btn-primary">На главную</a>
+            </div>
+            {% endif %}
+        </section>
+    </main>
+
+    <script>
+        // Store items data
+        const itemsData = {
+            {% for item in items %}
+            {{ item.id }}: {
+                id: {{ item.id }},
+                title: "{{ item.title|replace('"', '\\"') }}",
+                poster_path: "{{ item.poster_path or '' }}",
+                media_type: "{{ item.media_type or 'movie' }}",
+                original_media_type: "{{ item.original_media_type or '' }}",
+                url: "{{ item.url or '' }}",
+                vote_average: "{{ item.vote_average }}",
+                release_date: "{{ item.release_date or item.first_air_date or '' }}",
+                overview: "{{ item.overview|replace('"', '\\"')|replace('\n', ' ')|replace('\r', ' ') }}",
+                is_watched: {{ 'true' if item.is_watched else 'false' }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        };
+        
+        const category = '{{ category }}';
+        let currentPage = {{ current_page|default(1) }};
+        let isLoading = false;
+        let hasMoreItems = true;
+        
+        // Infinite scroll for all categories
+        window.addEventListener('scroll', () => {
+            if (isLoading || !hasMoreItems) return;
+            const scrollPosition = window.innerHeight + window.scrollY;
+            const documentHeight = document.documentElement.scrollHeight;
+            const scrollPercent = (scrollPosition / documentHeight * 100).toFixed(1);
+            console.log(`Scroll: ${scrollPercent}%`);
+            if (scrollPosition >= documentHeight * 0.5) {
+                console.log('Loading more items...');
+                loadMoreItems();
+            }
+        });
+        
+        function loadMoreItems() {
+            if (isLoading) return;
+            isLoading = true;
+            currentPage++;
+            
+            console.log(`Loading page ${currentPage} for ${category}`);
+            document.getElementById('loading-indicator').classList.remove('hidden');
+            
+            let url = `/api/${category}?page=${currentPage}`;
+            
+            // Add filters only for movies and tv-shows
+            if (category !== 'trending') {
+                const genre = document.getElementById('genre-filter')?.value || '';
+                const sort = document.getElementById('sort-filter')?.value || 'popularity.desc';
+                url += `&genre=${genre}&sort=${sort}`;
+            }
+            
+            console.log(`Fetching: ${url}`);
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    console.log(`Received ${data.items?.length || 0} items`);
+                    if (data.items && data.items.length > 0) {
+                        appendItems(data.items);
+                    } else {
+                        hasMoreItems = false;
+                        document.getElementById('no-more-items').classList.remove('hidden');
+                    }
+                    document.getElementById('loading-indicator').classList.add('hidden');
+                    isLoading = false;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('loading-indicator').classList.add('hidden');
+                    isLoading = false;
+                });
+        }
+        
+        function appendItems(items) {
+            const grid = document.getElementById('items-grid');
+            items.forEach(item => {
+                const posterPath = item.poster_path || item.backdrop_path || '';
+                const releaseDate = item.release_date || item.first_air_date || '';
+                const isFav = item.is_favorite || false;
+                const isWatched = item.is_watched || false;
+
+                const html = `
+                    <div class="grid-item" data-id="${item.id}" onclick="openItem(${item.id})" style="cursor: pointer;">
+                        <div class="grid-item-thumbnail">
+                            ${posterPath ? `<img src="${posterPath}" alt="${item.title}">` : `<img src="https://placehold.co/200x300/333333/FFFFFF?text=${item.title.substring(0, 15)}" alt="${item.title}">`}
+                            ${item.media_type ? `<span class="media-badge">${item.media_type}</span>` : ''}
+                            <button class="favorite-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${item.id})" title="${isFav ? 'В избранном' : 'В избранное'}">
+                                <i class="${isFav ? 'fas' : 'far'} fa-heart"></i>
+                            </button>
+                            <button class="watched-btn ${isWatched ? 'active' : ''}" onclick="event.stopPropagation(); toggleWatched(${item.id})" title="${isWatched ? 'Просмотрено' : 'Отметить как просмотренное'}">
+                                <i class="${isWatched ? 'fas' : 'far'} fa-eye${isWatched ? '' : '-slash'}"></i>
+                            </button>
+                        </div>
+                        <div class="grid-item-info">
+                            <h3>${item.title}</h3>
+                            <div class="grid-item-meta">
+                                <span>${releaseDate}</span>
+                                <span><i class="fas fa-star"></i> ${item.vote_average}</span>
+                            </div>
+                            ${item.overview ? `<p class="overview">${item.overview.substring(0, 100)}${item.overview.length > 100 ? '...' : ''}</p>` : ''}
+                        </div>
+                    </div>
+                `;
+                grid.insertAdjacentHTML('beforeend', html);
+
+                // Store in itemsData
+                itemsData[item.id] = item;
+            });
+        }
+        
+        function openItem(id) {
+            const item = itemsData[id];
+            if (!item) return;
+            
+            // Determine URL based on media type
+            let url;
+            if (item.url) {
+                // Use pre-built URL if available
+                url = item.url;
+            } else if (item.original_media_type) {
+                // Use original_media_type for trending items
+                url = `/${item.original_media_type}/${id}`;
+            } else {
+                // Fallback based on category
+                if (category === 'movies') {
+                    url = `/movie/${id}`;
+                } else if (category === 'tv-shows') {
+                    url = `/tv/${id}`;
+                } else {
+                    // For trending, try to determine from media_type string
+                    const mediaType = item.media_type || '';
+                    if (mediaType === 'Фильм' || mediaType === 'movie') {
+                        url = `/movie/${id}`;
+                    } else {
+                        url = `/tv/${id}`;
+                    }
+                }
+            }
+            
+            window.location.href = url;
+        }
+        
+        function toggleFavorite(id) {
+            const item = itemsData[id];
+            if (!item) return;
+            
+            fetch(`/api/favorites/check/${id}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.is_favorite) {
+                        showFolderSelectionModal(id, data.folders, true);
+                    } else {
+                        showFolderSelectionModal(id, [], false);
+                    }
+                });
+        }
+        
+        function showFolderSelectionModal(itemId, currentFolders, isRemove) {
+            const existingModal = document.getElementById('folderSelectionModal');
+            if (existingModal) existingModal.remove();
+            
+            fetch('/api/favorites/folders')
+                .then(r => r.json())
+                .then(data => {
+                    const modal = document.createElement('div');
+                    modal.id = 'folderSelectionModal';
+                    modal.className = 'modal folder-selection-modal';
+                    
+                    let foldersHtml = '';
+                    data.folders.forEach(folder => {
+                        const isInFolder = currentFolders.includes(folder.id);
+                        foldersHtml += `
+                            <div class="folder-option ${isInFolder ? 'in-folder' : ''}" onclick="${isRemove && isInFolder ? `removeFromFolder('${folder.id}', ${itemId})` : `addToFolder('${folder.id}', ${itemId})`}">
+                                <i class="fas fa-folder${isInFolder ? '' : '-open'}"></i>
+                                <div class="folder-option-info">
+                                    <h4>${folder.name}</h4>
+                                    <span>${folder.item_count} элементов</span>
+                                </div>
+                                ${isInFolder ? '<i class="fas fa-check" style="color: var(--accent);"></i>' : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    modal.innerHTML = `
+                        <div class="modal-content">
+                            <h3>${isRemove ? 'Удалить из папки' : 'Добавить в избранное'}</h3>
+                            <div class="folder-list">
+                                ${foldersHtml}
+                                <div class="folder-option create-new-folder" onclick="createFolderAndAdd(${itemId})">
+                                    <i class="fas fa-plus-circle"></i>
+                                    <div class="folder-option-info">
+                                        <h4>Создать новую папку</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-buttons">
+                                <button onclick="closeFolderModal()" class="btn-secondary">Отмена</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(modal);
+                    
+                    modal.addEventListener('click', function(e) {
+                        if (e.target === this) closeFolderModal();
+                    });
+                });
+        }
+        
+        function closeFolderModal() {
+            const modal = document.getElementById('folderSelectionModal');
+            if (modal) modal.remove();
+        }
+        
+        function addToFolder(folderId, itemId) {
+            const item = itemsData[itemId];
+            if (!item) return;
+            
+            fetch('/api/favorites/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({...item, folder_id: folderId})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    updateHeartIcon(itemId, true);
+                    showNotification(`Добавлено в "${data.folder_name}"!`, 'success');
+                    closeFolderModal();
+                } else {
+                    showNotification(data.message || 'Ошибка', 'error');
+                }
+            });
+        }
+        
+        function removeFromFolder(folderId, itemId) {
+            fetch(`/api/favorites/remove/${itemId}?folder_id=${folderId}`, { method: 'DELETE' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        if (!data.is_favorite) {
+                            updateHeartIcon(itemId, false);
+                        }
+                        showNotification('Удалено из папки', 'info');
+                        closeFolderModal();
+                    }
+                });
+        }
+        
+        function createFolderAndAdd(itemId) {
+            const existingInput = document.getElementById('inlineFolderInput');
+            if (existingInput) existingInput.remove();
+            
+            const inputDiv = document.createElement('div');
+            inputDiv.id = 'inlineFolderInput';
+            inputDiv.className = 'inline-folder-input';
+            inputDiv.innerHTML = `
+                <div class="folder-input-content">
+                    <input type="text" id="newFolderNameInput" placeholder="Название папки" maxlength="50">
+                    <div class="folder-input-buttons">
+                        <button onclick="cancelFolderInput()" class="btn-secondary">Отмена</button>
+                        <button onclick="submitNewFolder(${itemId})" class="btn-primary">Создать</button>
+                    </div>
+                </div>
+            `;
+            
+            const createOption = document.querySelector('.create-new-folder');
+            if (createOption) {
+                createOption.after(inputDiv);
+            }
+            
+            document.getElementById('newFolderNameInput').focus();
+            
+            document.getElementById('newFolderNameInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') submitNewFolder(itemId);
+            });
+        }
+        
+        function cancelFolderInput() {
+            const inputDiv = document.getElementById('inlineFolderInput');
+            if (inputDiv) inputDiv.remove();
+        }
+        
+        function submitNewFolder(itemId) {
+            const nameInput = document.getElementById('newFolderNameInput');
+            const name = nameInput.value.trim();
+            
+            if (!name) {
+                showNotification('Введите название папки', 'error');
+                return;
+            }
+            
+            fetch('/api/favorites/folders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    cancelFolderInput();
+                    addToFolder(data.folder_id, itemId);
+                } else {
+                    showNotification(data.message || 'Ошибка', 'error');
+                }
+            });
+        }
+        
+        function updateHeartIcon(id, isFavorite) {
+            // Find all favorite buttons for this item
+            const buttons = document.querySelectorAll(`button[onclick*="toggleFavorite(${id})"]`);
+            console.log('updateHeartIcon:', id, isFavorite, 'found', buttons.length, 'buttons');
+            
+            buttons.forEach(btn => {
+                const icon = btn.querySelector('i');
+                if (isFavorite) {
+                    btn.classList.add('active');
+                    if (icon) {
+                        icon.classList.remove('far');
+                        icon.classList.add('fas');
+                    }
+                    btn.title = 'В избранном';
+                } else {
+                    btn.classList.remove('active');
+                    if (icon) {
+                        icon.classList.remove('fas');
+                        icon.classList.add('far');
+                    }
+                    btn.title = 'В избранное';
+                }
+            });
+        }
+
+        function updateWatchedIcon(id, isWatched) {
+            // Find all watched buttons for this item
+            const buttons = document.querySelectorAll(`button[onclick*="toggleWatched(${id})"]`);
+            console.log('updateWatchedIcon:', id, isWatched, 'found', buttons.length, 'buttons');
+            
+            buttons.forEach(btn => {
+                const icon = btn.querySelector('i');
+                if (isWatched) {
+                    btn.classList.add('active');
+                    if (icon) {
+                        icon.classList.remove('far', 'fa-eye-slash');
+                        icon.classList.add('fas', 'fa-eye');
+                    }
+                    btn.title = 'Просмотрено';
+                } else {
+                    btn.classList.remove('active');
+                    if (icon) {
+                        icon.classList.remove('fas', 'fa-eye');
+                        icon.classList.add('far', 'fa-eye-slash');
+                    }
+                    btn.title = 'Отметить как просмотренное';
+                }
+            });
+        }
+
+        function toggleWatched(id) {
+            const item = itemsData[id];
+            if (!item) return;
+
+            // Check current watched status
+            fetch(`/api/favorites/check/${id}`)
+            .then(r => r.json())
+            .then(data => {
+                const isWatched = data.folders.includes('watched');
+                
+                if (isWatched) {
+                    // Remove from watched folder
+                    fetch(`/api/favorites/remove/${id}?folder_id=watched`, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(removeData => {
+                        updateWatchedIcon(id, false);
+                        showNotification('Удалено из просмотренных', 'info');
+                        // Show the card again
+                        const card = document.querySelector(`.grid-item[data-id="${id}"]`);
+                        if (card) {
+                            card.style.opacity = '1';
+                            card.style.pointerEvents = 'auto';
+                        }
+                    });
+                } else {
+                    // Add to watched folder
+                    fetch('/api/favorites/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            ...item,
+                            folder_id: 'watched'
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(addData => {
+                        if (addData.success) {
+                            updateWatchedIcon(id, true);
+                            showNotification('Отмечено как просмотренное', 'success');
+                            // Hide the card
+                            const card = document.querySelector(`.grid-item[data-id="${id}"]`);
+                            if (card) {
+                                card.style.opacity = '0.5';
+                                card.style.pointerEvents = 'none';
+                            }
+                        } else {
+                            showNotification(addData.message || 'Ошибка', 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error marking as watched:', err);
+                        showNotification('Ошибка при отметке', 'error');
+                    });
+                }
+            });
+        }
+
+        function showNotification(msg, type) {
+            const div = document.createElement('div');
+            div.className = 'notification ' + type;
+            div.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check' : 'info') + '-circle"></i><span>' + msg + '</span>';
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+        
+        function applyFilters() {
+            const genre = document.getElementById('genre-filter').value;
+            const sort = document.getElementById('sort-filter').value;
+            window.location.href = `/${category}?genre=${genre}&sort=${sort}`;
+        }
+    </script>
+</body>
+</html>
