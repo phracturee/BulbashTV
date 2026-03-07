@@ -52,14 +52,12 @@ class RutrackerSpider(BaseSpider):
         1147,  # обсуждение сериалов
     ]
 
-    def __init__(
-        self, login: str = None, password: str = None, tor_proxy: Optional[str] = None
-    ):
+    def __init__(self, login: str = None, password: str = None, tor_proxy: Optional[str] = None):
         super().__init__(tor_proxy)
         self.login_str = login
         self.password = password
 
-        # Try to load cookies from cookies folder first
+        # Load cookies from cookies folder
         project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         cookie_file = os.path.join(project_dir, "cookies", "rutracker_cookies.json")
 
@@ -71,21 +69,8 @@ class RutrackerSpider(BaseSpider):
                 self.session.cookies.update(cookies)
                 print(f"[Rutracker] Loaded {len(cookies)} cookies from {cookie_file}")
         else:
-            # Fallback to legacy cookie file
-            legacy_cookie_file = os.path.join(
-                tempfile.gettempdir(), "rutracker.cookies.json"
-            )
-            self.load_cookies(legacy_cookie_file)
-
-        # Store credentials in config if not provided
-        if not self.login_str or not self.password:
-            try:
-                from config import RUTRACKER_LOGIN, RUTRACKER_PASS
-
-                self.login_str = RUTRACKER_LOGIN
-                self.password = RUTRACKER_PASS
-            except ImportError:
-                pass
+            print(f"[Rutracker] No cookies found at {cookie_file}")
+            print(f"[Rutracker] Please login to rutracker.org and export cookies to {cookie_file}")
 
     def _get_next_page_url(self, html: str, current_page: int) -> Optional[str]:
         """Get URL of next page from pagination"""

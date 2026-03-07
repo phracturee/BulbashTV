@@ -19,10 +19,8 @@
 
 - **Каталог фильмов и сериалов** — получение данных из TMDB с поддержкой русского языка
 - **Страница сезонов и серий** — удобный выбор серий для сериалов с описанием, рейтингом и датой выхода
-- **Поиск торрентов** — интеграция с 15+ трекерами:
-  - Международные: YTS, TPB, 1337x, SolidTorrents, Nyaa.si
-  - Русские: RuTracker (прямая интеграция, до 500 результатов), Rutor, Kinozal
-  - Агрегаторы: TorrentsAPI, BT4G, MagnetDL
+- **Поиск торрентов** — интеграция с основными трекерами:
+  - Русские: RuTracker (прямая интеграция, до 500 результатов), Rutor
 - **Пагинация результатов** — постепенная загрузка торрентов (по 30 результатов с кнопкой "Показать ещё")
 - **Избранное** — организация контента по папкам
 - **Просмотренное** — отслеживание просмотренных фильмов и серий
@@ -41,13 +39,13 @@
 │                    BulbashTVApp                         │
 │  (Flask application factory)                            │
 ├─────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │ TMDBClient   │  │ DataManager  │  │ TorrentMgr   │  │
-│  │              │  │              │  │              │  │
-│  │ - API запросы│  │ - Избранное  │  │ - Поиск      │  │
-│  │ - Кэширование│  │ - История    │  │ - Стриминг   │  │
-│  └──────────────┘  └──────────────┘  └──────────────┘  │
-│                                                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
+│  │ TMDBClient   │  │ DataManager  │  │ TorrentMgr   │   │
+│  │              │  │              │  │              │   │
+│  │ - API запросы│  │ - Избранное  │  │ - Поиск      │   │
+│  │ - Кэширование│  │ - История    │  │ - Стриминг   │   │
+│  └──────────────┘  └──────────────┘  └──────────────┘   │
+│                                                         │
 │  ┌──────────────────────────────────────────────────┐   │
 │  │           MediaFormatter + ImageCache            │   │
 │  │           (Форматирование и кэширование)         │   │
@@ -81,10 +79,11 @@
 | `MediaFormatter` | Форматирование данных для шаблонов |
 | `ImageCache` | Кэширование изображений |
 | `TorrentManager` | Управление поиском и стримингом торрентов |
-| `TorrentSearcher` | Поиск по трекерам |
+| `TorrentSearcher` | Поиск по трекерам (RuTracker, Rutor) |
 | `TorrentResult` | Модель результата поиска |
 | `BaseSpider` | Базовый класс для парсеров |
-| `RutrackerSpider` | Парсер RuTracker с поддержкой пагинации (до 10 страниц) | |
+| `RutrackerSpider` | Парсер RuTracker с поддержкой пагинации (до 10 страниц) |
+| `RutorSpider` | Парсер Rutor | |
 
 ## 📦 Установка
 
@@ -145,51 +144,30 @@ brew install mpv
 TMDB_API_KEY = "ваш_api_ключ"  # Получите на https://www.themoviedb.org/settings/api
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 
-# Jackett Configuration (опционально)
-JACKETT_API_KEY = ""  # API ключ Jackett
-JACKETT_URL = "http://localhost:9117"
+# Custom DNS (опционально)
+CUSTOM_DNS = ""  # "8.8.8.8" (Google), "1.1.1.1" (Cloudflare)
 
-# Russian Tracker Credentials (опционально)
-RUTRACKER_LOGIN = ""
-RUTRACKER_PASS = ""
-NNMCLUB_LOGIN = ""
-NNMCLUB_PASS = ""
-
-# Tor Proxy (опционально)
-TOR_PROXY = ""  # "socks5h://127.0.0.1:9050"
+# Torrent download directory (опционально)
+TORRENT_DOWNLOAD_DIR = ""  # Путь к папке для загрузок
 ```
 
-### Настройка Jackett (рекомендуется для русского контента)
+### Настройка cookies для RuTracker
 
-Jackett обеспечивает доступ к русским трекерам (RuTracker, Kinozal, NnmClub).
+RuTracker требует авторизации. Вместо логина/пароля используются cookies:
 
-1. Установите Jackett:
-   ```bash
-   # Linux
-   wget https://github.com/Jackett/Jackett/releases/download/v0.21.0/Jackett.Binaries.LinuxAMD64.tar.gz
-   tar -xzf Jackett.Binaries.LinuxAMD64.tar.gz
-   cd Jackett && ./jackett
-   ```
+1. Войдите на rutracker.org через браузер
+2. Экспортируйте cookies (например, через расширение "EditThisCookie")
+3. Сохраните в файл `cookies/rutracker_cookies.json`
 
-2. Откройте веб-интерфейс: http://localhost:9117
-
-3. Добавьте индексеры: RuTracker, Kinozal, NnmClub
-
-4. Скопируйте API ключ и добавьте в `config.py`
-
-### Настройка Tor (опционально)
-
-Для доступа к трекерам через Tor:
-
-```bash
-sudo apt install tor
-sudo service tor start
+**Формат cookies файла:**
+```json
+[
+  {"name": "bb_data", "value": "...", "domain": ".rutracker.org"},
+  {"name": "bb_session", "value": "...", "domain": ".rutracker.org"}
+]
 ```
 
-В `config.py`:
-```python
-TOR_PROXY = "socks5h://127.0.0.1:9050"
-```
+**Rutor** не требует авторизации и работает сразу.
 
 ## 🚀 Использование
 
@@ -240,10 +218,9 @@ python app.py
 
 | Endpoint | Описание |
 |----------|----------|
-| `GET /api/torrents/search?q=query` | Поиск по всем трекерам |
-| `GET /api/torrents/search/yts?q=query` | Поиск только YTS |
-| `GET /api/torrents/search/tpb?q=query` | Поиск только TPB |
+| `GET /api/torrents/search?q=query` | Поиск по всем трекерам (RuTracker + Rutor) |
 | `GET /api/torrents/search/rutracker?q=query` | Поиск RuTracker |
+| `GET /api/torrents/search/rutor?q=query` | Поиск Rutor |
 | `POST /api/torrent/start` | Начать стриминг |
 | `GET /api/torrent/status` | Получить статус |
 | `POST /api/torrent/stop` | Остановить стриминг |
@@ -275,8 +252,7 @@ BulbashTV/
 ├── parsers/
 │   ├── __init__.py            # Базовый класс Spider
 │   ├── rutor.py               # Парсер Rutor
-│   ├── rutracker.py           # Парсер RuTracker (многостраничный)
-│   └── kinozal.py             # Парсер Kinozal
+│   └── rutracker.py           # Парсер RuTracker (многостраничный)
 ├── utils/
 │   └── http.py                # HTTP утилиты
 ├── striming-torrent-mpv/      # Стриминг торрентов
@@ -315,7 +291,6 @@ BulbashTV/
 
 ### Опциональные
 
-- **Jackett** — для доступа к дополнительным трекерам
 - **Tor** — для анонимного поиска
 - **Git** — для клонирования репозитория
 
@@ -391,12 +366,12 @@ curl "http://localhost:5000/api/torrents/search?q=test"
 
 ### Не работают русские трекеры
 
-**Проблема:** Поиск не находит русский контент
+**Проблема:** Поиск не находит контент
 
 **Решение:**
-1. RuTracker интегрирован напрямую (требуется авторизация)
-2. Настройте Jackett для дополнительных трекеров
-3. Добавьте API ключ Jackett в `config.py`
+1. RuTracker и Rutor интегрированы напрямую
+2. Для RuTracker требуется авторизация (укажите логин/пароль в `config.py`)
+3. Проверьте логи: `cat logs/app.log`
 
 ### Ошибки при стриминге
 

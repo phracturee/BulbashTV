@@ -640,12 +640,14 @@ class BulbashTVApp:
 
         try:
             results = self.torrent_manager.search(query)
+            # Convert TorrentResult objects to dictionaries
+            results_dict = [r.to_dict() if hasattr(r, 'to_dict') else r for r in results]
             return jsonify(
                 {
                     "success": True,
                     "query": query,
-                    "results": results,
-                    "count": len(results),
+                    "results": results_dict,
+                    "count": len(results_dict),
                 }
             )
         except Exception as e:

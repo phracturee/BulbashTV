@@ -148,6 +148,15 @@ class TorrentManager:
         # Search from scratch
         print(f"[Search] Searching for: {query}")
         results = self.searcher.search_all(query)
+        
+        # Convert TorrentResult objects to dictionaries
+        results_dict = []
+        for r in results:
+            if hasattr(r, 'to_dict'):
+                results_dict.append(r.to_dict())
+            else:
+                results_dict.append(r)
+        results = results_dict
 
         if not results:
             print(f"[Search] No results from trackers for: {query}")

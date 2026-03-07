@@ -5,14 +5,14 @@
 # Get your API key from: https://www.themoviedb.org/settings/api
 TMDB_API_KEY = "your_tmdb_api_key_here"
 
-# SOCKS5 Proxy Configuration
-PROXY_HOST = "146.103.109.37"
-PROXY_PORT = 1080
-PROXY_USERNAME = "vm-003"
-PROXY_PASSWORD = "Zw7q1yecjHDcQB6gWM"
-
-# Custom DNS
-CUSTOM_DNS = "9.9.9.9"
+# Custom DNS (leave empty to use system DNS)
+# Recommended: "8.8.8.8" (Google), "1.1.1.1" (Cloudflare), "9.9.9.9" (Quad9)
+CUSTOM_DNS = ""
 
 # TMDB API Base URL
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
+
+# Torrent download directory (optional)
+# Leave empty to use system temp directory
+# Example: "/home/user/Downloads" or "./downloads"
+TORRENT_DOWNLOAD_DIR = ""
