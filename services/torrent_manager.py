@@ -116,8 +116,8 @@ class TorrentManager:
         os.path.dirname(os.path.dirname(__file__)), "data", "playback_progress.json"
     )
     CACHE_DURATION = 3600  # 1 hour cache
-    POPCORN_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "striming-torrent-mpv")
     DOWNLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "downloads")
+    SERVER_JS = os.path.join(os.path.dirname(os.path.dirname(__file__)), "server.js")
 
     def __init__(self, project_dir: str):
         self.project_dir = project_dir
@@ -425,8 +425,8 @@ class TorrentManager:
             os.system("pkill -f 'node.*server.js' 2>/dev/null || true")
             time.sleep(1)
 
-            # Start popcorn-mpv server
-            cmd = f'cd {self.POPCORN_DIR} && nohup node server.js "{magnet}" > {self.log_path} 2>&1 &'
+            # Start striming-torrent-mpv server
+            cmd = f'cd {self.project_dir} && nohup node server.js "{magnet}" > {self.log_path} 2>&1 &'
             print(f"[POPCORN-MPV] Starting: {cmd}")
             os.system(cmd)
             
