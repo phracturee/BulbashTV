@@ -1105,7 +1105,7 @@
             overlay.id = 'seriesLoadingOverlay';
             overlay.className = 'torrents-overlay';
             overlay.innerHTML = `
-                <div class="torrents-container">
+                <div class="torrents-container" style="max-width: 700px;">
                     <div class="torrents-header">
                         <h2><i class="fas fa-tv"></i> Поиск серии</h2>
                         <button class="torrents-close" onclick="hideLoadingOverlay()">
@@ -1116,10 +1116,28 @@
                         <div class="search-loading">
                             <i class="fas fa-spinner fa-spin"></i>
                             <h3>Поиск серии...</h3>
-                            <p><strong>Сериал:</strong> ${escapeHtml(seriesName)}</p>
-                            <p><strong>Сезон:</strong> ${season}</p>
-                            <p><strong>Серия:</strong> ${episode}</p>
-                            <p style="color: #888; margin-top: 20px;">Ищем на RuTracker...</p>
+                            <div style="text-align: left; margin-top: 25px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px;">
+                                <p style="margin-bottom: 15px;"><strong>Информация о серии:</strong></p>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div>
+                                        <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Сериал:</p>
+                                        <p style="color: var(--text-color);">${escapeHtml(seriesName)}</p>
+                                    </div>
+                                    <div>
+                                        <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Сезон:</p>
+                                        <p style="color: var(--accent);">${season}</p>
+                                    </div>
+                                    <div>
+                                        <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Серия:</p>
+                                        <p style="color: var(--accent);">${episode}</p>
+                                    </div>
+                                    <div>
+                                        <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Файл:</p>
+                                        <p style="color: var(--text-color);">S${season < 10 ? '0'+season : season}E${episode < 10 ? '0'+episode : episode}</p>
+                                    </div>
+                                </div>
+                                <p style="color: #888; margin-top: 20px; text-align: center;"><i class="fas fa-search"></i> Ищем на RuTracker...</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1136,35 +1154,35 @@
                 const torrent = data;
                 content.innerHTML = `
                     <div class="torrent-info-detailed">
-                        <h3 style="color: var(--accent); margin-bottom: 20px;">
+                        <h3 style="color: var(--accent); margin-bottom: 20px; text-align: center;">
                             <i class="fas fa-check-circle"></i> Раздача найдена!
                         </h3>
-                        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                            <p style="margin-bottom: 10px;"><strong>Название:</strong></p>
-                            <p style="color: var(--text-color); margin-bottom: 20px;">${escapeHtml(torrent.title)}</p>
+                        <div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; margin-bottom: 25px;">
+                            <p style="margin-bottom: 15px; color: #888; font-size: 0.9rem;"><strong>Название раздачи:</strong></p>
+                            <p style="color: var(--text-color); margin-bottom: 25px; line-height: 1.6;">${escapeHtml(torrent.title)}</p>
                             
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
                                 <div>
-                                    <p style="color: #888; font-size: 0.85rem;">Трекер</p>
-                                    <p style="color: var(--accent);">${torrent.tracker}</p>
+                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 8px;"><i class="fas fa-satellite-dish"></i> Трекер</p>
+                                    <p style="color: var(--accent); font-weight: 600;">${torrent.tracker}</p>
                                 </div>
                                 <div>
-                                    <p style="color: #888; font-size: 0.85rem;">Качество</p>
-                                    <p style="color: var(--accent);">${torrent.quality}</p>
+                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 8px;"><i class="fas fa-film"></i> Качество</p>
+                                    <p style="color: var(--accent); font-weight: 600;">${torrent.quality}</p>
                                 </div>
                                 <div>
-                                    <p style="color: #888; font-size: 0.85rem;">Сиды</p>
-                                    <p style="color: #4CAF50;">${torrent.seeds || 0}</p>
+                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 8px;"><i class="fas fa-arrow-up"></i> Сиды</p>
+                                    <p style="color: #4CAF50; font-weight: 600;">${torrent.seeds || 0}</p>
                                 </div>
                                 <div>
-                                    <p style="color: #888; font-size: 0.85rem;">Размер</p>
-                                    <p style="color: var(--text-color);">${torrent.size || 'Unknown'}</p>
+                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 8px;"><i class="fas fa-hdd"></i> Размер</p>
+                                    <p style="color: var(--text-color); font-weight: 600;">${torrent.size || 'Unknown'}</p>
                                 </div>
                             </div>
                         </div>
-                        <div class="search-loading">
-                            <i class="fas fa-spinner fa-spin"></i>
-                            <h3>Запуск стриминга...</h3>
+                        <div class="search-loading" style="padding: 30px 20px;">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 2.5rem; margin-bottom: 15px;"></i>
+                            <h3 style="margin-bottom: 10px;">Запуск стриминга...</h3>
                             <p style="color: #888;">Подключаемся к серверу...</p>
                         </div>
                     </div>
@@ -1172,14 +1190,17 @@
             } else if (stage === 'streaming') {
                 content.innerHTML = `
                     <div class="torrent-info-detailed">
-                        <h3 style="color: #4CAF50; margin-bottom: 20px;">
+                        <h3 style="color: #4CAF50; margin-bottom: 20px; text-align: center;">
                             <i class="fas fa-play-circle"></i> Запуск...
                         </h3>
-                        <p style="margin-bottom: 10px;"><strong>Файл серии:</strong></p>
-                        <p style="color: var(--accent); font-size: 1.2rem; margin-bottom: 20px;">${data.pattern}</p>
-                        <div class="search-loading">
-                            <i class="fas fa-spinner fa-spin"></i>
-                            <h3>Буферизация...</h3>
+                        <div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; margin-bottom: 25px;">
+                            <p style="margin-bottom: 15px; color: #888; font-size: 0.9rem;"><strong>Файл серии:</strong></p>
+                            <p style="color: var(--accent); font-size: 1.5rem; text-align: center; margin-bottom: 20px; font-weight: 700;">${data.pattern}</p>
+                            <p style="color: #888; text-align: center; font-size: 0.9rem;"><i class="fas fa-info-circle"></i> Формат: SXXEYY</p>
+                        </div>
+                        <div class="search-loading" style="padding: 30px 20px;">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 2.5rem; margin-bottom: 15px;"></i>
+                            <h3 style="margin-bottom: 10px;">Буферизация...</h3>
                             <p style="color: #888;">Загрузка данных...</p>
                         </div>
                     </div>
