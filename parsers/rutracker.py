@@ -360,7 +360,7 @@ class RutrackerSpider(BaseSpider):
 
         print(f"[Rutracker] Found {len(topics)} topics, fetching magnets...")
 
-        # Second pass: fetch magnets for each topic (limit to top 50 for more results)
+        # Second pass: fetch magnets for all topics
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
         def fetch_magnet(topic_info):
@@ -383,10 +383,10 @@ class RutrackerSpider(BaseSpider):
                 )
             return None
 
-        # Fetch magnets in parallel (max 5 workers to avoid being blocked)
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        # Fetch magnets in parallel (max 10 workers for speed)
+        with ThreadPoolExecutor(max_workers=10) as executor:
             futures = {
-                executor.submit(fetch_magnet, topic): topic for topic in topics[:50]
+                executor.submit(fetch_magnet, topic): topic for topic in topics
             }
             for future in as_completed(futures):
                 result = future.result()

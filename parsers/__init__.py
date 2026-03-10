@@ -114,6 +114,11 @@ class SearchResult:
     peers: int = 0
     year: str = ""
     quality: str = ""
+    extra: dict = None  # Additional data (for LostFilm URL, etc.)
+    
+    def __post_init__(self):
+        if self.extra is None:
+            self.extra = {}
 
 
 class BaseSpider(ABC):

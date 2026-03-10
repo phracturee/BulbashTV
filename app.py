@@ -114,9 +114,17 @@ class BulbashTVApp:
         self.app.route("/api/torrents/search/rutracker")(
             self.search_torrents_rutracker
         )
+        self.app.route("/api/torrents/search/lostfilm")(
+            self.search_torrents_lostfilm
+        )
+        self.app.route("/api/torrents/search/series")(
+            self.search_series
+        )
+        self.app.route("/api/lostfilm/magnet")(self.get_lostfilm_magnet)
         self.app.route("/api/torrent/start", methods=["POST"])(self.start_torrent)
         self.app.route("/api/torrent/status")(self.torrent_status)
         self.app.route("/api/torrent/stop", methods=["POST"])(self.stop_torrent)
+        self.app.route("/api/torrent/files")(self.get_torrent_files)
         self.app.route("/api/torrent/play", methods=["POST"])(self.play_torrent)
         self.app.route("/api/torrent/history")(self.get_torrent_history)
         self.app.route("/api/torrent/cache/clear", methods=["DELETE"])(self.clear_torrent_cache)
@@ -731,6 +739,90 @@ class BulbashTVApp:
                     "tracker": "RuTracker",
                 }
             )
+        except Exception as e:
+            return jsonify({"success": False, "message": str(e)})
+
+    def search_torrents_lostfilm(self):
+        """Search LostFilm only"""
+        query = request.args.get("q", "")
+        if not query:
+            return jsonify({"success": False, "message": "No search query provided"})
+
+        try:
+            results = TorrentSearcher.search_lostfilm(query)
+            return jsonify(
+                {
+                    "success": True,
+                    "query": query,
+                    "results": results,
+                    "count": len(results),
+                    "tracker": "LostFilm",
+                }
+            )
+        except Exception as e:
+            return jsonify({"success": False, "message": str(e)})
+
+    def search_series(self):
+        """Search for TV series with specific season"""
+        series_name = request.args.get("name", "")
+        season = request.args.get("season", 0, type=int)
+        
+        if not series_name or not season:
+            return jsonify({
+                "success": False,
+                "message": "Series name and season required"
+            })
+
+        print(f"\n{'='*60}")
+        print(f"[SERIES SEARCH] {'='*60}")
+        print(f"[SERIES] Series: {series_name}")
+        print(f"[SERIES] Season: {season}")
+        print(f"[SERIES] Query: {series_name} Сезон: {season}")
+        print(f"[SERIES] {'='*60}")
+
+        try:
+            results = self.torrent_manager.search_series(series_name, season)
+            
+            print(f"[SERIES] Found {len(results)} matching torrents:")
+            for i, r in enumerate(results, 1):
+                print(f"[SERIES]   [{i}] {r.title}")
+                print(f"[SERIES]       Tracker: {r.tracker}")
+                print(f"[SERIES]       Seeds: {r.seeds}")
+                print(f"[SERIES]       Quality: {r.quality}")
+            print(f"[SERIES] {'='*60}\n")
+            
+            # Convert TorrentResult objects to dictionaries
+            results_dict = [r.to_dict() if hasattr(r, 'to_dict') else r for r in results]
+            
+            return jsonify(
+                {
+                    "success": True,
+                    "series": series_name,
+                    "season": season,
+                    "results": results_dict,
+                    "count": len(results_dict),
+                }
+            )
+        except Exception as e:
+            print(f"[SERIES] Error: {e}")
+            return jsonify({"success": False, "message": str(e)})
+
+    def get_lostfilm_magnet(self):
+        """Get magnet link for LostFilm URL"""
+        from parsers.lostfilm import LostFilmSpider
+        
+        url = request.args.get("url", "")
+        if not url:
+            return jsonify({"success": False, "message": "No URL provided"})
+
+        try:
+            spider = LostFilmSpider()
+            magnet = spider.get_movie_download(url)
+            
+            if magnet:
+                return jsonify({"success": True, "magnet": magnet})
+            else:
+                return jsonify({"success": False, "message": "Failed to get magnet"})
         except Exception as e:
             return jsonify({"success": False, "message": str(e)})
 

@@ -115,7 +115,8 @@ class TorrentManager:
     PLAYBACK_PROGRESS_FILE = os.path.join(
         os.path.dirname(os.path.dirname(__file__)), "data", "playback_progress.json"
     )
-    CACHE_DURATION = 3600  # 1 hour cache
+    CACHE_DURATION = 7200  # 2 hours cache (increased from 1 hour)
+    MAX_CACHE_SIZE = 1000  # Maximum number of queries to cache
     DOWNLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "downloads")
     SERVER_JS = os.path.join(os.path.dirname(os.path.dirname(__file__)), "server.js")
 
@@ -264,22 +265,33 @@ class TorrentManager:
         return {}
 
     def _save_torrent_cache(self, cache: Dict):
-        """Save torrent cache to file"""
+        """Save torrent cache to file with size limit"""
         cache_file = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), "data", "torrent_cache.json"
         )
         try:
+            # Clean old entries if cache is too large
+            if len(cache) > self.MAX_CACHE_SIZE:
+                # Sort by timestamp and keep only newest entries
+                sorted_cache = sorted(
+                    cache.items(),
+                    key=lambda x: x[1].get("timestamp", 0),
+                    reverse=True
+                )[:self.MAX_CACHE_SIZE]
+                cache = dict(sorted_cache)
+                print(f"[Cache] Cleaned to {self.MAX_CACHE_SIZE} entries")
+            
             with open(cache_file, "w", encoding="utf-8") as f:
                 json.dump(cache, f, ensure_ascii=False, indent=2)
         except Exception as e:
             print(f"Error saving cache: {e}")
 
     def _is_cache_valid(self, cache_entry: Dict) -> bool:
-        """Check if cache entry is still valid (1 hour)"""
+        """Check if cache entry is still valid (2 hours)"""
         if not cache_entry:
             return False
         timestamp = cache_entry.get("timestamp", 0)
-        return (time.time() - timestamp) < self.CACHE_DURATION
+        return (time.time() - timestamp) < self.CACHE_DURATION  # 2 hours
 
     def clear_cache(self):
         """Clear torrent cache"""
@@ -292,6 +304,34 @@ class TorrentManager:
                 print("[Cache] Cleared")
         except Exception as e:
             print(f"Error clearing cache: {e}")
+
+    # ==================== Series Support ====================
+
+    def get_episode_file(self, magnet: str, season: int, episode: int) -> Optional[str]:
+        """Get episode file path from torrent by SXXEYY pattern"""
+        try:
+            # For now, return a pattern that will be matched during streaming
+            # Format: S02E01 or S10E01 (with leading zero for season < 10)
+            if season < 10:
+                pattern = f"S{season:02d}E{episode:02d}"
+            else:
+                pattern = f"S{season}E{episode:02d}"
+            
+            print(f"[Series] Looking for file pattern: {pattern}")
+            return pattern
+        except Exception as e:
+            print(f"[Series] Error getting episode file: {e}")
+            return None
+
+    def search_series(self, series_name: str, season: int) -> list:
+        """Search for series with specific season"""
+        try:
+            from torrent_search import TorrentSearcher
+            searcher = TorrentSearcher()
+            return searcher.search_series(series_name, season)
+        except Exception as e:
+            print(f"[Series] Search error: {e}")
+            return []
 
     # ==================== Playback Progress ====================
 

@@ -30,96 +30,116 @@ class RutorSpider(BaseSpider):
     def get_name(self) -> str:
         return "Rutor"
 
-    def search(self, query: str) -> List[SearchResult]:
-        """Search torrents by query"""
+    def search(self, query: str, max_pages: int = 5) -> List[SearchResult]:
+        """Search torrents by query with pagination"""
         results = []
 
         try:
-            # Search via search page
-            search_url = "/search/0/0/000/0/{}".format(query)
+            # Search via search page - parse multiple pages
+            page = 0
+            while page < max_pages:
+                search_url = "/search/{}/0/000/0/{}".format(page, query)
 
-            resp = self.get(search_url)
-            html = resp.text
+                resp = self.get(search_url)
+                html = resp.text
 
-            soup = BeautifulSoup(html, "lxml")
+                soup = BeautifulSoup(html, "lxml")
 
-            # Find results table
-            table = (
-                soup.find("div", {"id": "index"}).find("table")
-                if soup.find("div", {"id": "index"})
-                else None
-            )
-            if not table:
-                return results
+                # Find results table
+                table = (
+                    soup.find("div", {"id": "index"}).find("table")
+                    if soup.find("div", {"id": "index"})
+                    else None
+                )
+                if not table:
+                    print(f"[Rutor] No results table found on page {page + 1}")
+                    break
 
-            # Parse each row (skip header)
-            for row in table.find_all("tr")[1:]:
-                try:
-                    tds = row.find_all("td")
-                    if len(tds) < 2:
-                        continue
+                # Parse each row (skip header)
+                page_results = []
+                for row in table.find_all("tr")[1:]:
+                    try:
+                        tds = row.find_all("td")
+                        if len(tds) < 2:
+                            continue
 
-                    # Get magnet and title
-                    magnet_link = row.find("a", href=re.compile(r"magnet:"))
-                    if not magnet_link:
-                        continue
+                        # Get magnet and title
+                        magnet_link = row.find("a", href=re.compile(r"magnet:"))
+                        if not magnet_link:
+                            continue
 
-                    magnet = magnet_link.get("href")
+                        magnet = magnet_link.get("href")
 
-                    # Get title from second link (not magnet)
-                    links = row.find_all("a")
-                    title = ""
-                    torrent_url = ""
-                    for link in links:
-                        href = link.get("href", "")
-                        if href.startswith("/torrent/"):
-                            title = link.get_text(strip=True)
-                            torrent_url = href
-                            break
+                        # Get title from second link (not magnet)
+                        links = row.find_all("a")
+                        title = ""
+                        torrent_url = ""
+                        for link in links:
+                            href = link.get("href", "")
+                            if href.startswith("/torrent/"):
+                                title = link.get_text(strip=True)
+                                torrent_url = href
+                                break
 
-                    if not title:
-                        continue
+                        if not title:
+                            continue
 
-                    # Get seeds/leech
-                    seed_span = row.find("span", class_="green")
-                    leech_span = row.find("span", class_="red")
+                        # Get seeds/leech
+                        seed_span = row.find("span", class_="green")
+                        leech_span = row.find("span", class_="red")
 
-                    seeds = self.clean_number(seed_span.get_text()) if seed_span else 0
-                    leechers = (
-                        self.clean_number(leech_span.get_text()) if leech_span else 0
-                    )
-
-                    # Get size
-                    size = ""
-                    # Try to extract size from HTML
-                    size_match = re.search(r"(\d+\.?\d*)\s*(GB|MB|TB)", str(row))
-                    if size_match:
-                        size = f"{size_match.group(1)} {size_match.group(2)}"
-
-                    # Extract year from title
-                    year = self.extract_year(title)
-
-                    # Detect quality
-                    quality = self.detect_quality(title)
-
-                    results.append(
-                        SearchResult(
-                            title=title,
-                            magnet=magnet,
-                            tracker="Rutor",
-                            size=size,
-                            seeds=seeds,
-                            peers=seeds + leechers,
-                            year=year,
-                            quality=quality,
+                        seeds = self.clean_number(seed_span.get_text()) if seed_span else 0
+                        leechers = (
+                            self.clean_number(leech_span.get_text()) if leech_span else 0
                         )
-                    )
 
-                except Exception as e:
-                    print(f"[Rutor] Error parsing row: {e}")
-                    continue
+                        # Get size
+                        size = ""
+                        # Try to extract size from HTML
+                        size_match = re.search(r"(\d+\.?\d*)\s*(GB|MB|TB)", str(row))
+                        if size_match:
+                            size = f"{size_match.group(1)} {size_match.group(2)}"
 
-            print(f"[Rutor] Found {len(results)} results for '{query}'")
+                        # Extract year from title
+                        year = self.extract_year(title)
+
+                        # Detect quality
+                        quality = self.detect_quality(title)
+
+                        page_results.append(
+                            SearchResult(
+                                title=title,
+                                magnet=magnet,
+                                tracker="Rutor",
+                                size=size,
+                                seeds=seeds,
+                                peers=seeds + leechers,
+                                year=year,
+                                quality=quality,
+                            )
+                        )
+
+                    except Exception as e:
+                        print(f"[Rutor] Error parsing row: {e}")
+                        continue
+
+                print(f"[Rutor] Found {len(page_results)} results on page {page + 1}")
+                results.extend(page_results)
+
+                # Check if there are more pages
+                if len(page_results) < 25:  # Rutor shows ~25 results per page
+                    print(f"[Rutor] Last page (only {len(page_results)} results)")
+                    break
+
+                # Check for next page link
+                next_page_link = soup.find("a", string=str(page + 2))
+                if not next_page_link:
+                    print(f"[Rutor] No more pages found")
+                    break
+
+                page += 1
+
+            print(f"[Rutor] Total results: {len(results)} for '{query}'")
 
         except Exception as e:
             print(f"[Rutor] Search error: {e}")

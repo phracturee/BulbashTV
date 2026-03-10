@@ -36,6 +36,15 @@
             border-radius: 15px;
             padding: 30px;
             margin-top: 20px;
+            overflow: visible;  /* Allow button to be visible */
+        }
+
+        .torrents-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow: visible;  /* Allow button to overflow */
+            padding-bottom: 10px;  /* Space for button */
         }
         
         .player-header, .torrents-header {
@@ -90,12 +99,13 @@
             cursor: pointer;
             transition: all 0.3s;
             border: 1px solid transparent;
+            overflow: visible;  /* Allow content to overflow */
         }
-        
+
         .torrent-item:hover {
             background: rgba(255,255,255,0.1);
             border-color: var(--accent);
-            transform: translateX(5px);
+            /* Removed transform to prevent cropping */
         }
         
         .torrent-info {
@@ -248,11 +258,14 @@
             background: rgba(218, 165, 32, 0.2);
         }
 
-        /* Load more torrents button */
+        /* Load more torrents button - fixed at bottom */
         .load-more-torrents {
+            position: sticky;
+            bottom: 20px;
             text-align: center;
             padding: 20px;
             margin-top: 20px;
+            z-index: 100;
         }
 
         .btn-load-more {
@@ -268,6 +281,8 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
         }
 
         .btn-load-more:hover {
@@ -516,32 +531,30 @@
         function displayTorrents(torrents, append = false) {
             const contentDiv = document.getElementById('torrentsContent');
             
-            // Initialize or get current state
-            if (!append) {
-                window.allTorrents = torrents;
-                window.displayedTorrents = 0;
-                window.loadingTorrents = false;
-            }
+            // Show ALL torrents at once (no pagination)
+            window.allTorrents = torrents;
+            window.displayedTorrents = torrents.length;
             
-            // Display next batch (30 at a time)
-            const BATCH_SIZE = 30;
-            const start = window.displayedTorrents;
-            const end = Math.min(start + BATCH_SIZE, window.allTorrents.length);
-            
-            if (start === 0 || !append) {
-                contentDiv.innerHTML = '<div class="torrents-list"></div>';
-            }
-            
+            contentDiv.innerHTML = '<div class="torrents-list"></div>';
             const listDiv = contentDiv.querySelector('.torrents-list');
             
-            for (let i = start; i < end; i++) {
-                const torrent = window.allTorrents[i];
+            // Display all torrents
+            for (let i = 0; i < torrents.length; i++) {
+                const torrent = torrents[i];
                 const selectedClass = torrent.selected ? 'selected' : '';
                 const selectedBadge = torrent.selected
                     ? '<span style="color: #4CAF50; margin-right: 5px;"><i class="fas fa-check-circle"></i> Выбрано</span>'
                     : '';
                 const isKinozal = torrent.tracker === 'Kinozal';
                 const iconClass = isKinozal ? 'fa-external-link-alt' : 'fa-play';
+                
+                // For LostFilm - show both English and Russian titles
+                let displayTitle = escapeHtml(torrent.title);
+                if (torrent.tracker === 'LostFilm' && torrent.extra && torrent.extra.title_ru) {
+                    const enTitle = escapeHtml(torrent.title);
+                    const ruTitle = escapeHtml(torrent.extra.title_ru);
+                    displayTitle = `<span style="color: var(--accent);">${ruTitle}</span> <span style="opacity: 0.7;">(${enTitle})</span>`;
+                }
 
                 // Get playback progress for this torrent
                 const progress = getPlaybackProgress(torrent.magnet);
@@ -557,7 +570,7 @@
                 const html = `
                     <div class="torrent-item ${selectedClass}" data-magnet="${magnetData}" data-title="${titleData}" data-tracker="${trackerData}">
                         <div class="torrent-info">
-                            <div class="torrent-title">${selectedBadge}${escapeHtml(torrent.title)}${progressBadge}</div>
+                            <div class="torrent-title">${selectedBadge}${displayTitle}${progressBadge}</div>
                             <div class="torrent-meta">
                                 <span class="torrent-quality">${escapeHtml(torrent.quality)}</span>
                                 <span class="torrent-tracker">${escapeHtml(torrent.tracker)}</span>
@@ -576,8 +589,6 @@
                 listDiv.insertAdjacentHTML('beforeend', html);
             }
             
-            window.displayedTorrents = end;
-            
             // Add click handlers
             document.querySelectorAll('.torrent-item').forEach(item => {
                 item.addEventListener('click', function() {
@@ -588,37 +599,12 @@
                 });
             });
             
-            // Add "load more" button if there are more torrents
-            if (end < window.allTorrents.length) {
-                const loadMoreDiv = document.createElement('div');
-                loadMoreDiv.className = 'load-more-torrents';
-                loadMoreDiv.innerHTML = `
-                    <button class="btn-load-more" onclick="loadMoreTorrents()">
-                        <i class="fas fa-chevron-down"></i> Показать ещё (${window.allTorrents.length - end} из ${window.allTorrents.length})
-                    </button>
-                `;
-                // Remove existing load more button if exists
-                const existing = contentDiv.querySelector('.load-more-torrents');
-                if (existing) existing.remove();
-                contentDiv.appendChild(loadMoreDiv);
-            }
+            console.log(`[Display] Showing all ${torrents.length} torrents`);
         }
 
         function loadMoreTorrents() {
-            if (window.loadingTorrents) return;
-            window.loadingTorrents = true;
-            
-            const contentDiv = document.getElementById('torrentsContent');
-            const loadMoreDiv = contentDiv.querySelector('.load-more-torrents');
-            if (loadMoreDiv) {
-                loadMoreDiv.innerHTML = '<p style="text-align: center; color: #888;"><i class="fas fa-spinner fa-spin"></i> Загрузка...</p>';
-            }
-            
-            // Simulate loading delay for better UX
-            setTimeout(() => {
-                displayTorrents(window.allTorrents, true);
-                window.loadingTorrents = false;
-            }, 300);
+            // No longer used - all torrents shown at once
+            console.log('[Load More] All torrents already displayed');
         }
 
         function playTorrentFromData(btn) {
@@ -647,6 +633,28 @@
             console.log('Tracker:', tracker);
             console.log('Magnet:', magnet.substring(0, 50) + '...');
 
+            // For LostFilm - fetch real magnet link first
+            if (tracker === 'LostFilm' && magnet && magnet.startsWith('http')) {
+                console.log('[LostFilm] Fetching magnet link for:', magnet);
+                fetch(`/api/lostfilm/magnet?url=${encodeURIComponent(magnet)}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.magnet) {
+                        console.log('[LostFilm] Got magnet:', data.magnet.substring(0, 50) + '...');
+                        // Continue with real magnet
+                        startStreaming(data.magnet, title, tracker);
+                    } else {
+                        console.error('[LostFilm] Failed to get magnet:', data);
+                        alert('Не удалось получить magnet ссылку для LostFilm');
+                    }
+                })
+                .catch(err => {
+                    console.error('[LostFilm] Error:', err);
+                    alert('Ошибка при получении magnet ссылки');
+                });
+                return;
+            }
+
             // Check if this is a URL (Kinozal) instead of magnet link
             if (magnet && magnet.startsWith('http')) {
                 console.log('Opening URL in browser:', magnet);
@@ -654,6 +662,11 @@
                 return;
             }
 
+            // Regular magnet link - start streaming
+            startStreaming(magnet, title, tracker);
+        }
+
+        function startStreaming(magnet, title, tracker) {
             // Save selected torrent to server
             fetch('/api/torrents/selected', {
                 method: 'POST',
@@ -673,8 +686,8 @@
             updateStatus('Начало стриминга...', 'loading');
 
             console.log('[Player] Starting streaming...');
-            
-            // Start torrent with popcorn-mpv
+
+            // Start torrent with striming-torrent-mpv
             fetch('/api/torrent/start', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},

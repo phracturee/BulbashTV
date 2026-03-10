@@ -56,6 +56,11 @@ data/*.json
 .pytest_cache/
 .mypy_cache/
 
+# Cached images (TMDB posters/backdrops)
+static/img/*.jpg
+static/img/*.png
+static/img/*.webp
+
 # Build
 build/
 dist/

@@ -29,6 +29,7 @@ class TorrentResult:
         year: str = "",
         quality: str = "Unknown",
         torrent_type: str = "movie",
+        extra: dict = None,
     ):
         self.title = title
         self.magnet = magnet
@@ -39,6 +40,7 @@ class TorrentResult:
         self.year = year
         self.quality = quality
         self.type = torrent_type
+        self.extra = extra or {}  # Additional data (for LostFilm URL, etc.)
         self.selected = False
         self.selected_at = 0
 
@@ -222,13 +224,13 @@ class TorrentSearcher:
             print(f"RuTracker search error: {e}")
             return []
 
-    def search_rutor(self, query: str) -> List[TorrentResult]:
-        """Search Rutor via Python parser (no login required)"""
+    def search_rutor(self, query: str, max_pages: int = 5) -> List[TorrentResult]:
+        """Search Rutor via Python parser with pagination"""
         try:
             from parsers.rutor import RutorSpider
 
             spider = RutorSpider()
-            results = spider.search(query)
+            results = spider.search(query, max_pages=max_pages)
             return [
                 TorrentResult(
                     title=r.title,
@@ -247,6 +249,50 @@ class TorrentSearcher:
             print(f"Rutor search error: {e}")
             return []
 
+    def search_lostfilm(self, query: str) -> List[TorrentResult]:
+        """Search LostFilm via parser - show results immediately, get magnet on selection"""
+        try:
+            from parsers.lostfilm import LostFilmSpider
+
+            spider = LostFilmSpider()
+            search_results = spider.search(query)
+            
+            print(f"[LostFilm] Converting {len(search_results)} search results to TorrentResult")
+            
+            # Convert search results to TorrentResult - show ALL results immediately
+            results = []
+            for r in search_results:
+                if not r.title:
+                    continue
+                
+                # Use English title for search, but store Russian for display
+                display_title = r.extra.get("title_ru", r.title)
+                full_title = f"{display_title} ({r.year})" if r.year else display_title
+                    
+                # Store URL in magnet field, will fetch real magnet on selection
+                results.append(
+                    TorrentResult(
+                        title=full_title,  # Show Russian title with year
+                        year=r.year,
+                        quality=r.quality,
+                        size="",
+                        seeds=0,  # LostFilm doesn't show seeds
+                        peers=0,
+                        magnet=r.magnet or r.extra.get("url", ""),  # URL for now
+                        tracker="LostFilm",
+                        torrent_type="movie" if r.extra.get("type") == "Фильм" else "tv",
+                        extra=r.extra,  # Store extra data for later (includes English title)
+                    )
+                )
+            
+            print(f"[LostFilm] Returning {len(results)} results")
+            return results
+        except Exception as e:
+            print(f"LostFilm search error: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+
     def search_all(
         self, query: str, trackers: Optional[List[str]] = None
     ) -> List[TorrentResult]:
@@ -254,10 +300,11 @@ class TorrentSearcher:
         if not query:
             return []
 
-        # Default trackers (only RuTracker and Rutor)
+        # Default trackers (RuTracker, Rutor, LostFilm)
         available_trackers = [
             ("RuTracker", self.search_rutracker),
             ("Rutor", self.search_rutor),
+            ("LostFilm", self.search_lostfilm),
         ]
 
         # Filter if specific trackers requested
@@ -272,7 +319,7 @@ class TorrentSearcher:
         start_time = time.time()
 
         # Search in parallel
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=3) as executor:
             futures = {
                 executor.submit(func, query): name
                 for name, func in available_trackers
@@ -289,25 +336,83 @@ class TorrentSearcher:
                 except Exception as e:
                     print(f"[{tracker_name}] Error: {e}")
 
-        # Sort by seeds (descending)
-        results.sort(key=lambda x: x.seeds, reverse=True)
+        # Sort: first with year in title, then without year, sorted by seeds within each group
+        import re
+        
+        def has_year_in_title(title):
+            """Check if title contains a 4-digit year (1900-2099)"""
+            return bool(re.search(r'\b(19|20)\d{2}\b', title))
+        
+        def sort_key(x):
+            # Priority 1: Has year in title (1 = has year, 0 = no year)
+            has_year = 1 if has_year_in_title(x.title) else 0
+            # Priority 2: Number of seeds (descending)
+            return (has_year, x.seeds)
+        
+        results.sort(key=sort_key, reverse=True)
 
         print(
             f"[Search Complete] Total: {len(results)} results in {time.time() - start_time:.2f}s"
         )
         return results
 
-    def search_single_tracker(
-        self, tracker_name: str, query: str
-    ) -> List[TorrentResult]:
-        """Search single tracker by name"""
-        trackers = {
-            "RuTracker": self.search_rutracker,
-            "Rutor": self.search_rutor,
-        }
-
-        if tracker_name not in trackers:
-            print(f"Unknown tracker: {tracker_name}")
+    def search_series(self, series_name: str, season: int) -> List[TorrentResult]:
+        """Search for TV series with specific season"""
+        # Format query: "Series Name Season: X"
+        query = f"{series_name} Сезон: {season}"
+        print(f"[Series Search] Searching for: {query}")
+        
+        # Search RuTracker (best for Russian series)
+        try:
+            results = self.search_rutracker(query, max_pages=3)
+            
+            # Filter results for exact match
+            filtered = []
+            for r in results:
+                if self._is_correct_series(r.title, series_name, season):
+                    filtered.append(r)
+            
+            print(f"[Series Search] Found {len(filtered)} matching torrents")
+            return filtered
+        except Exception as e:
+            print(f"[Series Search] Error: {e}")
             return []
-
-        return trackers[tracker_name](query)
+    
+    def _is_correct_series(self, title: str, series_name: str, season: int) -> bool:
+        """Check if torrent title matches series and season exactly"""
+        import re
+        
+        # Normalize title
+        title_lower = title.lower()
+        series_lower = series_name.lower()
+        
+        # Check if series name matches (exact match, not partial)
+        if series_lower not in title_lower:
+            return False
+        
+        # Check season number - must match exactly (not 2 for 22)
+        # Look for "Сезон: X" or "Season X" pattern
+        season_patterns = [
+            rf'сезон:\s*{season}\b',  # Сезон: 2
+            rf'сезон\s+{season}\b',   # Сезон 2
+            rf'season\s*{season}\b',   # Season 2
+            rf's{season:02d}\b',       # S02 or S2
+        ]
+        
+        season_found = False
+        for pattern in season_patterns:
+            if re.search(pattern, title_lower):
+                season_found = True
+                break
+        
+        if not season_found:
+            return False
+        
+        # Make sure it's not a wrong season (e.g., 2 for 22)
+        # Check that season number is not part of a larger number
+        wrong_seasons = [i for i in range(1, 100) if i != season and str(i) in str(season)]
+        for wrong in wrong_seasons:
+            if re.search(rf'сезон:\s*{wrong}\b', title_lower):
+                return False
+        
+        return True

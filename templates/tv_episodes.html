@@ -433,6 +433,57 @@
             margin-bottom: 15px;
         }
 
+        /* Series loading overlay styles */
+        .torrent-info-detailed {
+            padding: 30px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .torrent-info-detailed h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .torrent-info-detailed p {
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        .search-loading {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .search-loading i {
+            font-size: 3rem;
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+
+        .search-loading h3 {
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+        }
+
+        .search-loading p {
+            color: #888;
+        }
+
+        .player-info-detailed {
+            padding: 20px;
+        }
+
+        .player-info-detailed h3 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             .tv-series-page {
@@ -754,18 +805,21 @@
 
         // Select episode
         function selectEpisode(seasonNumber, index, element) {
-            // Remove active class from all episodes
+            // Remove active class
             document.querySelectorAll('.episode-item').forEach(item => {
                 item.classList.remove('active');
             });
 
-            // Add active class to selected episode
-            element.classList.add('active');
+            // Add active class
+            if (element) {
+                element.classList.add('active');
+            }
 
             // Store current episode
             const episodes = seasonsData[seasonNumber];
             if (episodes && episodes[index]) {
                 currentEpisode = episodes[index];
+                console.log(`[TV] Выбрано: S${currentEpisode.season_number}E${currentEpisode.episode_number}`);
                 showEpisodeInfo(episodes[index], seasonNumber);
             }
         }
@@ -823,20 +877,345 @@
             saveWatchedEpisodes();
         }
 
-        // Watch episode
+        // Watch episode - search series and start streaming
         function watchEpisode(season, episode) {
-            const query = `${TV_TITLE} S${season.toString().padStart(2, '0')}E${episode.toString().padStart(2, '0')}`;
-            showNotification(`Запуск серии: ${query}...`, 'info');
-            // TODO: Add watch logic here
-            // window.location.href = `/search?q=${encodeURIComponent(query)}`;
+            const seriesName = TV_TITLE;
+            
+            // Minimal browser logging
+            console.log(`[TV] Поиск: ${seriesName} Сезон ${season} Серия ${episode}`);
+            
+            showNotification(`Поиск серии: ${seriesName} Сезон ${season}...`, 'info');
+            
+            // Show loading overlay
+            showSeriesLoadingOverlay(seriesName, season, episode);
+            
+            // Step 1: Search for series with specific season
+            fetch(`/api/torrents/search/series?name=${encodeURIComponent(seriesName)}&season=${season}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.results && data.results.length > 0) {
+                    // Found matching torrents - take first result
+                    const torrent = data.results[0];
+                    console.log(`[TV] Найдено: ${torrent.title}`);
+                    
+                    updateLoadingOverlay('torrent', torrent);
+                    
+                    // Step 2: Start streaming
+                    startSeriesStreaming(torrent, season, episode);
+                } else {
+                    hideLoadingOverlay();
+                    showNotification('Серия не найдена', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('[TV] Ошибка:', err);
+                hideLoadingOverlay();
+                showNotification('Ошибка поиска', 'error');
+            });
+        }
+        
+        // Start streaming for series episode
+        function startSeriesStreaming(torrent, season, episode) {
+            const seasonPadded = season < 10 ? `0${season}` : `${season}`;
+            const episodePadded = episode < 10 ? `0${episode}` : `${episode}`;
+            const episodePattern = `S${seasonPadded}E${episodePadded}`;
+            
+            console.log(`[TV] Запуск: ${episodePattern}`);
+            showNotification(`Запуск серии ${episodePattern}...`, 'info');
+            updateLoadingOverlay('streaming', {pattern: episodePattern});
+            
+            fetch('/api/torrent/start', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    magnet: torrent.magnet,
+                    title: `${torrent.title} - Серия ${episode}`,
+                    query: `${TV_TITLE} Сезон ${season}`,
+                    episode_pattern: episodePattern
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                hideLoadingOverlay();
+                
+                if (data.success) {
+                    showNotification('Серия запущена!', 'success');
+                    
+                    // Open player with detailed info
+                    openSeriesPlayerWithMenu(data.video_url, torrent, episodePattern, episode);
+                } else {
+                    showNotification(data.message || 'Ошибка запуска', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('[TV] Ошибка запуска:', err);
+                hideLoadingOverlay();
+                showNotification('Ошибка запуска', 'error');
+            });
+        }
+        
+        // Open series player with detailed menu
+        function openSeriesPlayerWithMenu(videoUrl, torrent, episodePattern, episodeNum) {
+            const overlay = document.createElement('div');
+            overlay.id = 'seriesPlayerOverlay';
+            overlay.className = 'torrents-overlay';
+            overlay.innerHTML = `
+                <div class="torrents-container" style="max-width: 800px;">
+                    <div class="torrents-header">
+                        <h2><i class="fas fa-play-circle"></i> Воспроизведение</h2>
+                        <button class="torrents-close" onclick="closeSeriesPlayer()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="player-info-detailed">
+                        <div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; margin-bottom: 25px;">
+                            <h3 style="color: var(--accent); margin-bottom: 20px; font-size: 1.3rem;">
+                                <i class="fas fa-info-circle"></i> Информация о серии
+                            </h3>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Серия:</p>
+                                <p style="color: var(--text-color); font-size: 1.1rem;">${episodePattern}</p>
+                            </div>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Раздача:</p>
+                                <p style="color: var(--text-color); font-size: 1rem;">${escapeHtml(torrent.title)}</p>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                                <div>
+                                    <p style="color: #888; font-size: 0.85rem;">Трекер</p>
+                                    <p style="color: var(--accent);">${torrent.tracker}</p>
+                                </div>
+                                <div>
+                                    <p style="color: #888; font-size: 0.85rem;">Качество</p>
+                                    <p style="color: var(--accent);">${torrent.quality}</p>
+                                </div>
+                                <div>
+                                    <p style="color: #888; font-size: 0.85rem;">Сиды</p>
+                                    <p style="color: #4CAF50;">${torrent.seeds || 0}</p>
+                                </div>
+                                <div>
+                                    <p style="color: #888; font-size: 0.85rem;">Размер</p>
+                                    <p style="color: var(--text-color);">${torrent.size || 'Unknown'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; margin-bottom: 25px;">
+                            <h3 style="color: #4CAF50; margin-bottom: 15px; font-size: 1.2rem;">
+                                <i class="fas fa-folder-open"></i> Файл воспроизведения
+                            </h3>
+                            <div id="fileList">
+                                <div class="search-loading">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <p>Загрузка списка файлов...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <a href="${videoUrl}" target="_blank" class="btn-load-more" style="text-decoration: none;">
+                                <i class="fas fa-external-link-alt"></i> Открыть плеер
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            
+            // Load file list
+            loadTorrentFiles(torrent.magnet, episodePattern);
+        }
+        
+        // Load torrent file list
+        function loadTorrentFiles(magnet, episodePattern) {
+            const fileList = document.getElementById('fileList');
+            if (!fileList) return;
+            
+            // Get torrent info hash from magnet
+            const hashMatch = magnet.match(/btih:([a-fA-F0-9]{40})/);
+            if (!hashMatch) {
+                fileList.innerHTML = '<p style="color: #888;">Не удалось получить информацию о файлах</p>';
+                return;
+            }
+            
+            const infoHash = hashMatch[1];
+            
+            // Request file list from server
+            fetch(`/api/torrent/files?hash=${infoHash}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.files && data.files.length > 0) {
+                    let html = '<div style="max-height: 300px; overflow-y: auto;">';
+                    
+                    data.files.forEach((file, index) => {
+                        const isPlaying = file.path.includes(episodePattern);
+                        const fileName = file.path.split('/').pop();
+                        
+                        html += `
+                            <div style="
+                                padding: 12px;
+                                margin-bottom: 8px;
+                                background: ${isPlaying ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255,255,255,0.05)'};
+                                border: ${isPlaying ? '2px solid #4CAF50' : '1px solid rgba(255,255,255,0.1)'};
+                                border-radius: 8px;
+                                ${isPlaying ? 'animation: pulse 2s infinite;' : ''}
+                            ">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-${isPlaying ? 'play-circle' : 'file'}" style="color: ${isPlaying ? '#4CAF50' : '#888'};"></i>
+                                    <div style="flex: 1;">
+                                        <p style="margin: 0; color: ${isPlaying ? '#4CAF50' : 'var(--text-color)'}; font-size: 0.9rem;">
+                                            ${escapeHtml(fileName)}
+                                        </p>
+                                        <p style="margin: 5px 0 0 0; color: #888; font-size: 0.75rem;">
+                                            ${file.size || 'Unknown size'}
+                                        </p>
+                                    </div>
+                                    ${isPlaying ? '<span style="color: #4CAF50; font-size: 0.75rem;"><i class="fas fa-circle" style="font-size: 6px;"></i> Воспроизводится</span>' : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    fileList.innerHTML = html;
+                } else {
+                    fileList.innerHTML = '<p style="color: #888;">Файлы не найдены</p>';
+                }
+            })
+            .catch(err => {
+                console.error('[Files] Error:', err);
+                fileList.innerHTML = '<p style="color: #888;">Ошибка загрузки списка файлов</p>';
+            });
+        }
+        
+        // Close series player
+        function closeSeriesPlayer() {
+            const overlay = document.getElementById('seriesPlayerOverlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+        
+        // Show loading overlay with detailed info
+        function showSeriesLoadingOverlay(seriesName, season, episode) {
+            const overlay = document.createElement('div');
+            overlay.id = 'seriesLoadingOverlay';
+            overlay.className = 'torrents-overlay';
+            overlay.innerHTML = `
+                <div class="torrents-container">
+                    <div class="torrents-header">
+                        <h2><i class="fas fa-tv"></i> Поиск серии</h2>
+                        <button class="torrents-close" onclick="hideLoadingOverlay()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="seriesLoadingContent">
+                        <div class="search-loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <h3>Поиск серии...</h3>
+                            <p><strong>Сериал:</strong> ${escapeHtml(seriesName)}</p>
+                            <p><strong>Сезон:</strong> ${season}</p>
+                            <p><strong>Серия:</strong> ${episode}</p>
+                            <p style="color: #888; margin-top: 20px;">Ищем на RuTracker...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+        
+        // Update loading overlay with torrent info
+        function updateLoadingOverlay(stage, data) {
+            const content = document.getElementById('seriesLoadingContent');
+            if (!content) return;
+            
+            if (stage === 'torrent') {
+                const torrent = data;
+                content.innerHTML = `
+                    <div class="torrent-info-detailed">
+                        <h3 style="color: var(--accent); margin-bottom: 20px;">
+                            <i class="fas fa-check-circle"></i> Раздача найдена!
+                        </h3>
+                        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                            <p style="margin-bottom: 10px;"><strong>Название:</strong></p>
+                            <p style="color: var(--text-color); margin-bottom: 20px;">${escapeHtml(torrent.title)}</p>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <p style="color: #888; font-size: 0.85rem;">Трекер</p>
+                                    <p style="color: var(--accent);">${torrent.tracker}</p>
+                                </div>
+                                <div>
+                                    <p style="color: #888; font-size: 0.85rem;">Качество</p>
+                                    <p style="color: var(--accent);">${torrent.quality}</p>
+                                </div>
+                                <div>
+                                    <p style="color: #888; font-size: 0.85rem;">Сиды</p>
+                                    <p style="color: #4CAF50;">${torrent.seeds || 0}</p>
+                                </div>
+                                <div>
+                                    <p style="color: #888; font-size: 0.85rem;">Размер</p>
+                                    <p style="color: var(--text-color);">${torrent.size || 'Unknown'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="search-loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <h3>Запуск стриминга...</h3>
+                            <p style="color: #888;">Подключаемся к серверу...</p>
+                        </div>
+                    </div>
+                `;
+            } else if (stage === 'streaming') {
+                content.innerHTML = `
+                    <div class="torrent-info-detailed">
+                        <h3 style="color: #4CAF50; margin-bottom: 20px;">
+                            <i class="fas fa-play-circle"></i> Запуск...
+                        </h3>
+                        <p style="margin-bottom: 10px;"><strong>Файл серии:</strong></p>
+                        <p style="color: var(--accent); font-size: 1.2rem; margin-bottom: 20px;">${data.pattern}</p>
+                        <div class="search-loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <h3>Буферизация...</h3>
+                            <p style="color: #888;">Загрузка данных...</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Hide loading overlay
+        function hideLoadingOverlay() {
+            const overlay = document.getElementById('seriesLoadingOverlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+        
+        // Open series player
+        function openSeriesPlayer(videoUrl, torrent, episodePattern) {
+            console.log(`[Player] Opening player with URL: ${videoUrl}`);
+            
+            // Open in new window or redirect
+            window.open(videoUrl, '_blank');
+            
+            // Or show success message with option to open player
+            setTimeout(() => {
+                if (confirm('Открыть плеер?')) {
+                    window.open(videoUrl, '_blank');
+                }
+            }, 2000);
         }
 
         // Watch current episode
         function watchCurrentEpisode() {
             if (currentEpisode) {
-                const season = currentEpisode.season_number;
-                const episode = currentEpisode.episode_number;
-                watchEpisode(season, episode);
+                watchEpisode(currentEpisode.season_number, currentEpisode.episode_number);
+            } else {
+                showNotification('Выберите серию сначала', 'error');
             }
         }
 
@@ -846,6 +1225,12 @@
             notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'info'}-circle"></i><span>${message}</span>`;
             document.body.appendChild(notification);
             setTimeout(() => notification.remove(), 3000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
     </script>
 </body>
