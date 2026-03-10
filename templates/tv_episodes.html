@@ -543,145 +543,60 @@
             50% { opacity: 0.7; }
         }
 
-        /* Series streaming bar - fixed at top */
+        /* Series streaming bar - simple fixed bar at top */
         .series-streaming-bar {
             position: fixed;
             top: 0;
             left: 80px;  /* Sidebar width */
             right: 0;
-            background: rgba(20, 20, 20, 0.98);
+            background: rgba(20, 20, 20, 0.95);
             border-bottom: 2px solid var(--accent);
-            padding: 12px 30px;
+            padding: 10px 30px;
             z-index: 9999;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         }
 
         .bar-content {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 30px;
-            max-width: 100%;
-        }
-
-        .bar-left {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            min-width: 200px;
-        }
-
-        .bar-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.9rem;
-        }
-
-        .bar-label {
-            color: #888;
-            font-size: 0.85rem;
-        }
-
-        .bar-filename {
-            color: var(--accent);
-            font-weight: 600;
-            max-width: 300px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .bar-center {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .bar-progress-container {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .bar-progress-bar {
-            flex: 1;
-            height: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .bar-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--accent), #ffb700);
-            transition: width 0.3s;
-            border-radius: 4px;
-        }
-
-        .bar-progress-text {
-            color: var(--accent);
-            font-weight: 600;
-            font-size: 0.85rem;
-            min-width: 45px;
-            text-align: right;
-        }
-
-        .bar-stats {
-            display: flex;
             gap: 20px;
-            justify-content: center;
         }
 
-        .bar-stat {
+        .bar-info {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 0.85rem;
+            gap: 12px;
+            flex: 1;
         }
 
-        .bar-stat-value {
-            font-weight: 600;
+        .bar-play-icon {
+            font-size: 1.2rem;
         }
 
-        .bar-right {
+        .bar-text {
             display: flex;
+            align-items: center;
             gap: 10px;
+            font-size: 0.95rem;
         }
 
-        .bar-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 1rem;
-        }
-
-        .bar-btn-primary {
-            background: rgba(218, 165, 32, 0.2);
-            color: var(--accent);
-            border: 2px solid var(--accent);
-        }
-
-        .bar-btn-primary:hover {
-            background: var(--accent);
-            color: #000;
-        }
-
-        .bar-btn-danger {
+        .bar-stop-btn {
             background: rgba(244, 67, 54, 0.2);
             color: #f44336;
             border: 2px solid #f44336;
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s;
         }
 
-        .bar-btn-danger:hover {
+        .bar-stop-btn:hover {
             background: #f44336;
             color: #fff;
         }
@@ -1192,166 +1107,23 @@
             });
         }
         
-        // Poll series streaming status
-        function pollSeriesStatus(torrent, episodePattern) {
-            fetch('/api/torrent/status')
-            .then(r => r.json())
-            .then(data => {
-                window.seriesStreamingStatus = data;
-                updateSeriesStreamingStatus(data, torrent, episodePattern);
-            })
-            .catch(err => {
-                console.error('[TV] Status poll error:', err);
-            });
-        }
-        
-        // Update series streaming status display
-        function updateSeriesStreamingStatus(status, torrent, episodePattern) {
-            const bar = document.getElementById('seriesStreamingBar');
-            if (!bar) {
-                console.log(`[STATUS] Bar not found`);
-                return;
-            }
-            
-            // Update filename if available
-            if (status.filename && status.filename !== 'Unknown') {
-                const filenameEl = document.getElementById('barFilename');
-                if (filenameEl) {
-                    filenameEl.textContent = status.filename;
-                    console.log(`[STATUS] Playing file: ${status.filename}`);
-                }
-            }
-            
-            const progress = status.progress || 0;
-            const downloadSpeed = status.download_speed || '0 MB/s';
-            const seeds = status.seeds || 0;
-            const downloaded = status.downloaded || '0 MB';
-            const time = status.time || '0:00';
-            
-            console.log(`[STATUS] Progress: ${progress.toFixed(1)}% | Speed: ${downloadSpeed} | Seeds: ${seeds} | Downloaded: ${downloaded} | Time: ${time}`);
-            
-            // Update progress bar
-            const progressFill = document.getElementById('barProgress');
-            const progressText = document.getElementById('barProgressText');
-            if (progressFill && progressText) {
-                progressFill.style.width = `${progress}%`;
-                progressText.textContent = `${progress.toFixed(1)}%`;
-            }
-            
-            // Update stats
-            const speedEl = document.getElementById('barSpeed');
-            const seedsEl = document.getElementById('barSeeds');
-            const downloadedEl = document.getElementById('barDownloaded');
-            const timeEl = document.getElementById('barTime');
-            
-            if (speedEl) speedEl.textContent = downloadSpeed;
-            if (seedsEl) seedsEl.textContent = seeds;
-            if (downloadedEl) downloadedEl.textContent = downloaded;
-            if (timeEl) timeEl.textContent = time;
-        }
-        
-        // Show series streaming status window - fixed bar at top
-        function showSeriesStreamingStatus(torrent, episodePattern, videoUrl, episodeNum) {
-            console.log(`\n${'='.repeat(60)}`);
-            console.log(`[TV] ========== STREAMING STATUS BAR ==========`);
-            console.log(`[TV] Episode: ${episodeNum}`);
-            console.log(`[TV] Pattern: ${episodePattern}`);
-            console.log(`[TV] Video URL: ${videoUrl}`);
-            console.log(`${'='.repeat(60)}\n`);
-            
-            // Check if bar already exists
-            const existing = document.getElementById('seriesStreamingBar');
-            if (existing) {
-                console.log(`[TV] Status bar already exists, updating...`);
-                return;
-            }
-            
-            const bar = document.createElement('div');
-            bar.id = 'seriesStreamingBar';
-            bar.className = 'series-streaming-bar';
-            bar.innerHTML = `
-                <div class="bar-content">
-                    <div class="bar-left">
-                        <div class="bar-item">
-                            <i class="fas fa-play-circle" style="color: #4CAF50;"></i>
-                            <span class="bar-episode">Серия ${episodeNum}</span>
-                        </div>
-                        <div class="bar-item">
-                            <span class="bar-label">Файл:</span>
-                            <span id="barFilename" class="bar-filename">${episodePattern}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="bar-center">
-                        <div class="bar-progress-container">
-                            <div class="bar-progress-bar">
-                                <div id="barProgress" class="bar-progress-fill" style="width: 0%"></div>
-                            </div>
-                            <span id="barProgressText" class="bar-progress-text">0%</span>
-                        </div>
-                        <div class="bar-stats">
-                            <span class="bar-stat">
-                                <i class="fas fa-download" style="color: #4CAF50;"></i>
-                                <span id="barSpeed" class="bar-stat-value">0 MB/s</span>
-                            </span>
-                            <span class="bar-stat">
-                                <i class="fas fa-users" style="color: var(--accent);"></i>
-                                <span id="barSeeds" class="bar-stat-value">0</span>
-                            </span>
-                            <span class="bar-stat">
-                                <i class="fas fa-hdd" style="color: #2196F3;"></i>
-                                <span id="barDownloaded" class="bar-stat-value">0 MB</span>
-                            </span>
-                            <span class="bar-stat">
-                                <i class="fas fa-clock" style="color: #9C27B0;"></i>
-                                <span id="barTime" class="bar-stat-value">0:00</span>
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <div class="bar-right">
-                        <a href="${videoUrl}" target="_blank" class="bar-btn bar-btn-primary" title="Открыть плеер">
-                            <i class="fas fa-external-link-alt"></i>
-                        </a>
-                        <button onclick="stopSeriesStreaming()" class="bar-btn bar-btn-danger" title="Остановить">
-                            <i class="fas fa-stop"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.insertBefore(bar, document.body.firstChild);
-            
-            console.log(`[TV] Status bar created and inserted at top of page`);
-            
-            // Start polling immediately
-            pollSeriesStatus(torrent, episodePattern);
-        }
-        
         // Stop series streaming
         function stopSeriesStreaming() {
             console.log(`\n${'='.repeat(60)}`);
-            console.log(`[TV] ========== STOPPING STREAMING ==========`);
+            console.log(`[TV] ========== STOPPING ==========`);
             console.log(`${'='.repeat(60)}\n`);
-            
-            // Stop status polling
-            if (window.seriesStatusInterval) {
-                clearInterval(window.seriesStatusInterval);
-                window.seriesStatusInterval = null;
-                console.log(`[TV] Status polling stopped`);
-            }
             
             // Stop torrent
             fetch('/api/torrent/stop', {method: 'POST'})
             .then(r => r.json())
             .then(data => {
-                console.log(`[TV] Streaming stopped:`, data);
+                console.log(`[TV] Stopped:`, data);
                 
                 // Remove bar
                 const bar = document.getElementById('seriesStreamingBar');
                 if (bar) {
                     bar.remove();
-                    console.log(`[TV] Status bar removed`);
+                    console.log(`[TV] Bar removed`);
                 }
                 
                 showNotification('Воспроизведение остановлено', 'success');
@@ -1360,6 +1132,47 @@
                 console.error(`[TV] Stop error:`, err);
                 showNotification('Ошибка остановки', 'error');
             });
+        }
+        
+        // Show series streaming status window - simple bar at top
+        function showSeriesStreamingStatus(torrent, episodePattern, videoUrl, episodeNum) {
+            console.log(`\n${'='.repeat(60)}`);
+            console.log(`[TV] ========== SHOW STREAMING BAR ==========`);
+            console.log(`[TV] Episode: ${episodeNum}`);
+            console.log(`[TV] Pattern: ${episodePattern}`);
+            console.log(`${'='.repeat(60)}\n`);
+            
+            // Check if bar already exists
+            const existing = document.getElementById('seriesStreamingBar');
+            if (existing) {
+                console.log(`[TV] Bar already exists`);
+                return;
+            }
+            
+            const bar = document.createElement('div');
+            bar.id = 'seriesStreamingBar';
+            bar.className = 'series-streaming-bar';
+            bar.innerHTML = `
+                <div class="bar-content">
+                    <div class="bar-info">
+                        <span class="bar-play-icon"><i class="fas fa-play-circle" style="color: #4CAF50;"></i></span>
+                        <span class="bar-text">
+                            <strong style="color: var(--accent);">Серия ${episodeNum}</strong>
+                            <span style="color: #888; margin: 0 10px;">|</span>
+                            <span id="barFilename" style="color: var(--text-color);">${episodePattern}</span>
+                            <span style="color: #888; margin: 0 10px;">|</span>
+                            <span id="barTorrentTitle" style="color: #888; font-size: 0.85rem; max-width: 400px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(torrent.title)}</span>
+                        </span>
+                    </div>
+                    <button onclick="stopSeriesStreaming()" class="bar-stop-btn" title="Остановить воспроизведение">
+                        <i class="fas fa-stop"></i> Остановить
+                    </button>
+                </div>
+            `;
+            
+            document.body.insertBefore(bar, document.body.firstChild);
+            
+            console.log(`[TV] Bar created`);
         }
         
         // Open series player with detailed menu
@@ -1644,21 +1457,6 @@
             if (overlay) {
                 overlay.remove();
             }
-        }
-        
-        // Open series player
-        function openSeriesPlayer(videoUrl, torrent, episodePattern) {
-            console.log(`[Player] Opening player with URL: ${videoUrl}`);
-            
-            // Open in new window or redirect
-            window.open(videoUrl, '_blank');
-            
-            // Or show success message with option to open player
-            setTimeout(() => {
-                if (confirm('Открыть плеер?')) {
-                    window.open(videoUrl, '_blank');
-                }
-            }, 2000);
         }
 
         // Watch current episode
