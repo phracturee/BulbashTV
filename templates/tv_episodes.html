@@ -433,6 +433,65 @@
             margin-bottom: 15px;
         }
 
+        /* Torrents overlay for series loading */
+        .torrents-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 10000;
+            overflow-y: auto;
+        }
+
+        .torrents-overlay.active {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .torrents-container {
+            width: 100%;
+            max-width: 900px;
+            background: rgba(20, 20, 20, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 20px;
+        }
+
+        .torrents-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .torrents-header h2 {
+            margin: 0;
+            color: var(--text-color);
+            font-size: 1.5rem;
+        }
+
+        .torrents-close {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .torrents-close:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
         /* Series loading overlay styles */
         .torrent-info-detailed {
             padding: 30px;
@@ -880,35 +939,39 @@
         // Watch episode - search series and start streaming
         function watchEpisode(season, episode) {
             const seriesName = TV_TITLE;
-            
-            // Minimal browser logging
-            console.log(`[TV] Поиск: ${seriesName} Сезон ${season} Серия ${episode}`);
-            
+
+            console.log(`[TV] ========== WATCH EPISODE STARTED ==========`);
+            console.log(`[TV] Series: ${seriesName}`);
+            console.log(`[TV] Season: ${season}, Episode: ${episode}`);
+            console.log(`[TV] TV_TITLE: ${TV_TITLE}`);
+            console.log(`[TV] currentEpisode:`, currentEpisode);
+            console.log(`[========================================]`);
+
             showNotification(`Поиск серии: ${seriesName} Сезон ${season}...`, 'info');
-            
+
             // Show loading overlay
+            console.log(`[TV] Calling showSeriesLoadingOverlay...`);
             showSeriesLoadingOverlay(seriesName, season, episode);
-            
+            console.log(`[TV] Overlay should be visible now`);
+
             // Step 1: Search for series with specific season
             fetch(`/api/torrents/search/series?name=${encodeURIComponent(seriesName)}&season=${season}`)
             .then(r => r.json())
             .then(data => {
+                console.log(`[TV] Search response:`, data);
                 if (data.success && data.results && data.results.length > 0) {
-                    // Found matching torrents - take first result
                     const torrent = data.results[0];
                     console.log(`[TV] Найдено: ${torrent.title}`);
-                    
                     updateLoadingOverlay('torrent', torrent);
-                    
-                    // Step 2: Start streaming
                     startSeriesStreaming(torrent, season, episode);
                 } else {
+                    console.log(`[TV] No results found`);
                     hideLoadingOverlay();
                     showNotification('Серия не найдена', 'error');
                 }
             })
             .catch(err => {
-                console.error('[TV] Ошибка:', err);
+                console.error(`[TV] Search error:`, err);
                 hideLoadingOverlay();
                 showNotification('Ошибка поиска', 'error');
             });
@@ -1101,9 +1164,19 @@
         
         // Show loading overlay with detailed info
         function showSeriesLoadingOverlay(seriesName, season, episode) {
+            console.log(`[Overlay] Creating loading overlay...`);
+            console.log(`[Overlay] Series: ${seriesName}, Season: ${season}, Episode: ${episode}`);
+            
+            // Remove existing overlay if any
+            const existing = document.getElementById('seriesLoadingOverlay');
+            if (existing) {
+                console.log(`[Overlay] Removing existing overlay`);
+                existing.remove();
+            }
+            
             const overlay = document.createElement('div');
             overlay.id = 'seriesLoadingOverlay';
-            overlay.className = 'torrents-overlay';
+            overlay.className = 'torrents-overlay active';  // Add 'active' class to show
             overlay.innerHTML = `
                 <div class="torrents-container" style="max-width: 700px;">
                     <div class="torrents-header">
@@ -1142,7 +1215,19 @@
                     </div>
                 </div>
             `;
+            
+            console.log(`[Overlay] Appending to body...`);
             document.body.appendChild(overlay);
+            
+            // Verify it was added
+            const checkOverlay = document.getElementById('seriesLoadingOverlay');
+            if (checkOverlay) {
+                console.log(`[Overlay] SUCCESS: Overlay is now in DOM`);
+                console.log(`[Overlay] Overlay display: ${window.getComputedStyle(checkOverlay).display}`);
+                console.log(`[Overlay] Overlay visibility: ${window.getComputedStyle(checkOverlay).visibility}`);
+            } else {
+                console.error(`[Overlay] ERROR: Overlay not found in DOM after append!`);
+            }
         }
         
         // Update loading overlay with torrent info
