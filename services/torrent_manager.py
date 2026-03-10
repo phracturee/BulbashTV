@@ -525,4 +525,38 @@ class TorrentManager:
         """Get current torrent status"""
         self.status.update_from_log(self.log_path)
         self.status.check_process_running()
-        return self.status.to_dict()
+        status = self.status.to_dict()
+        
+        # Try to get additional info from log
+        if os.path.exists(self.log_path):
+            try:
+                with open(self.log_path, "r", encoding="utf-8", errors="ignore") as f:
+                    log_content = f.read()
+                    
+                    # Parse download speed
+                    speed_match = re.search(r'Download speed:\s*([\d.]+\s*[MGK]B/s)', log_content)
+                    if speed_match:
+                        status["download_speed"] = speed_match.group(1)
+                    
+                    # Parse peers/seeds
+                    peers_match = re.search(r'Peers:\s*(\d+)', log_content)
+                    if peers_match:
+                        status["peers"] = int(peers_match.group(1))
+                    
+                    seeds_match = re.search(r'Seeds:\s*(\d+)', log_content)
+                    if seeds_match:
+                        status["seeds"] = int(seeds_match.group(1))
+                    
+                    # Parse downloaded/uploaded
+                    downloaded_match = re.search(r'Downloaded:\s*([\d.]+\s*[MGK]B)', log_content)
+                    if downloaded_match:
+                        status["downloaded"] = downloaded_match.group(1)
+                    
+                    uploaded_match = re.search(r'Uploaded:\s*([\d.]+\s*[MGK]B)', log_content)
+                    if uploaded_match:
+                        status["uploaded"] = uploaded_match.group(1)
+                        
+            except Exception as e:
+                print(f"[Status] Error reading log: {e}")
+        
+        return status

@@ -847,9 +847,22 @@ class BulbashTVApp:
         })
 
     def torrent_status(self):
-        """Get torrent status"""
+        """Get torrent streaming status"""
         status = self.torrent_manager.get_status()
-        return jsonify(status)
+        
+        # Add additional info for frontend
+        return jsonify({
+            "playing": status.get("playing", False),
+            "filename": status.get("filename", ""),
+            "time": status.get("time", "0:00"),
+            "duration": status.get("duration", "0:00"),
+            "progress": status.get("progress", 0),
+            "download_speed": status.get("download_speed", "0 MB/s"),
+            "peers": status.get("peers", 0),
+            "seeds": status.get("seeds", 0),
+            "downloaded": status.get("downloaded", "0 MB"),
+            "uploaded": status.get("uploaded", "0 MB"),
+        })
 
     def stop_torrent(self):
         """Stop torrent streaming"""
