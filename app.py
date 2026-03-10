@@ -856,6 +856,33 @@ class BulbashTVApp:
         success = self.torrent_manager.stop_streaming()
         return jsonify({"success": success})
 
+    def get_torrent_files(self):
+        """Get list of files in torrent by info hash"""
+        info_hash = request.args.get("hash", "")
+        
+        if not info_hash:
+            return jsonify({"success": False, "message": "Info hash required"})
+        
+        print(f"\n{'='*60}")
+        print(f"[TORRENT FILES] {'='*60}")
+        print(f"[FILES] Info hash: {info_hash}")
+        print(f"[FILES] {'='*60}")
+        
+        try:
+            # For now, return empty list - will be implemented with webtorrent integration
+            # This would require querying the webtorrent process for file list
+            print(f"[FILES] File list not yet implemented")
+            print(f"[FILES] {'='*60}\n")
+            
+            return jsonify({
+                "success": True,
+                "files": [],
+                "message": "File list not yet implemented"
+            })
+        except Exception as e:
+            print(f"[FILES] Error: {e}")
+            return jsonify({"success": False, "message": str(e)})
+
     def save_playback_progress(self):
         """Save playback position"""
         data = request.get_json()
