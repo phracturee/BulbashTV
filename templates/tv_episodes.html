@@ -940,29 +940,50 @@
         function watchEpisode(season, episode) {
             const seriesName = TV_TITLE;
 
+            console.log(`\n${'='.repeat(60)}`);
             console.log(`[TV] ========== WATCH EPISODE STARTED ==========`);
             console.log(`[TV] Series: ${seriesName}`);
             console.log(`[TV] Season: ${season}, Episode: ${episode}`);
             console.log(`[TV] TV_TITLE: ${TV_TITLE}`);
             console.log(`[TV] currentEpisode:`, currentEpisode);
-            console.log(`[========================================]`);
+            console.log(`${'='.repeat(60)}\n`);
 
             showNotification(`Поиск серии: ${seriesName} Сезон ${season}...`, 'info');
 
             // Show loading overlay
-            console.log(`[TV] Calling showSeriesLoadingOverlay...`);
+            console.log(`[TV] Creating loading overlay...`);
             showSeriesLoadingOverlay(seriesName, season, episode);
-            console.log(`[TV] Overlay should be visible now`);
 
             // Step 1: Search for series with specific season
             fetch(`/api/torrents/search/series?name=${encodeURIComponent(seriesName)}&season=${season}`)
             .then(r => r.json())
             .then(data => {
-                console.log(`[TV] Search response:`, data);
+                console.log(`\n${'='.repeat(60)}`);
+                console.log(`[TV] Search API response:`, data);
+                console.log(`${'='.repeat(60)}\n`);
+                
                 if (data.success && data.results && data.results.length > 0) {
-                    const torrent = data.results[0];
-                    console.log(`[TV] Найдено: ${torrent.title}`);
+                    // Find the torrent with matching season number
+                    const torrent = data.results.find(r => {
+                        const titleLower = r.title.toLowerCase();
+                        // Check if season number matches exactly (not 2 for 22)
+                        const seasonPattern = new RegExp(`сезон[:\\s]*${season}\\b`, 'i');
+                        return seasonPattern.test(titleLower);
+                    }) || data.results[0];
+                    
+                    console.log(`\n${'='.repeat(60)}`);
+                    console.log(`[TV] ========== SELECTED TORRENT ==========`);
+                    console.log(`[TV] Title: ${torrent.title}`);
+                    console.log(`[TV] Tracker: ${torrent.tracker}`);
+                    console.log(`[TV] Quality: ${torrent.quality}`);
+                    console.log(`[TV] Seeds: ${torrent.seeds}`);
+                    console.log(`[TV] Size: ${torrent.size}`);
+                    console.log(`[TV] Magnet: ${torrent.magnet.substring(0, 50)}...`);
+                    console.log(`${'='.repeat(60)}\n`);
+
                     updateLoadingOverlay('torrent', torrent);
+
+                    // Step 2: Start streaming
                     startSeriesStreaming(torrent, season, episode);
                 } else {
                     console.log(`[TV] No results found`);
@@ -983,7 +1004,12 @@
             const episodePadded = episode < 10 ? `0${episode}` : `${episode}`;
             const episodePattern = `S${seasonPadded}E${episodePadded}`;
             
-            console.log(`[TV] Запуск: ${episodePattern}`);
+            console.log(`\n${'='.repeat(60)}`);
+            console.log(`[TV] ========== START STREAMING ==========`);
+            console.log(`[TV] Looking for file pattern: ${episodePattern}`);
+            console.log(`[TV] Magnet: ${torrent.magnet.substring(0, 50)}...`);
+            console.log(`${'='.repeat(60)}\n`);
+            
             showNotification(`Запуск серии ${episodePattern}...`, 'info');
             updateLoadingOverlay('streaming', {pattern: episodePattern, torrent: torrent});
             
@@ -1003,12 +1029,14 @@
             })
             .then(r => r.json())
             .then(data => {
-                hideLoadingOverlay();
+                console.log(`\n${'='.repeat(60)}`);
+                console.log(`[TV] Start response:`, data);
+                console.log(`${'='.repeat(60)}\n`);
                 
                 if (data.success) {
-                    console.log(`[TV] Серия запущена!`);
+                    console.log(`[TV] Серия запущена! Video URL: ${data.video_url}`);
                     // Show streaming status window
-                    showSeriesStreamingStatus(torrent, episodePattern, data.video_url);
+                    showSeriesStreamingStatus(torrent, episodePattern, data.video_url, episode);
                 } else {
                     console.error(`[TV] Ошибка запуска:`, data.message);
                     showNotification(data.message || 'Ошибка запуска', 'error');
@@ -1039,6 +1067,14 @@
             const statusDiv = document.getElementById('seriesStreamingStatus');
             if (!statusDiv) return;
             
+            // Update filename if available
+            if (status.filename && status.filename !== 'Unknown') {
+                const filenameEl = document.getElementById('playingFilename');
+                if (filenameEl) {
+                    filenameEl.textContent = status.filename;
+                }
+            }
+            
             const progress = status.progress || 0;
             const downloadSpeed = status.download_speed || '0 MB/s';
             const peers = status.peers || 0;
@@ -1047,110 +1083,101 @@
             const uploaded = status.uploaded || '0 MB';
             
             statusDiv.innerHTML = `
-                <div style="margin-bottom: 25px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                        <span style="color: #888; font-size: 0.9rem;">Прогресс загрузки:</span>
+                <div style="margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #888; font-size: 0.85rem;">Прогресс:</span>
                         <span style="color: var(--accent); font-weight: 600;">${progress.toFixed(1)}%</span>
                     </div>
-                    <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 20px; overflow: hidden;">
+                    <div style="background: rgba(255,255,255,0.1); border-radius: 8px; height: 16px; overflow: hidden;">
                         <div style="
                             background: linear-gradient(90deg, var(--accent), #ffb700);
                             height: 100%;
                             width: ${progress}%;
                             transition: width 0.3s;
-                            border-radius: 10px;
                         "></div>
                     </div>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 25px;">
-                    <div style="background: rgba(76, 175, 80, 0.1); padding: 15px; border-radius: 10px; border-left: 3px solid #4CAF50;">
-                        <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;"><i class="fas fa-download"></i> Скорость</p>
-                        <p style="color: #4CAF50; font-size: 1.2rem; font-weight: 700;">${downloadSpeed}</p>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    <div style="background: rgba(76, 175, 80, 0.1); padding: 12px; border-radius: 8px; border-left: 3px solid #4CAF50;">
+                        <p style="color: #888; font-size: 0.75rem; margin-bottom: 5px;"><i class="fas fa-download"></i> Скорость</p>
+                        <p style="color: #4CAF50; font-size: 1.1rem; font-weight: 700;">${downloadSpeed}</p>
                     </div>
-                    <div style="background: rgba(218, 165, 32, 0.1); padding: 15px; border-radius: 10px; border-left: 3px solid var(--accent);">
-                        <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;"><i class="fas fa-users"></i> Раздают</p>
-                        <p style="color: var(--accent); font-size: 1.2rem; font-weight: 700;">${seeds}</p>
+                    <div style="background: rgba(218, 165, 32, 0.1); padding: 12px; border-radius: 8px; border-left: 3px solid var(--accent);">
+                        <p style="color: #888; font-size: 0.75rem; margin-bottom: 5px;"><i class="fas fa-users"></i> Раздают</p>
+                        <p style="color: var(--accent); font-size: 1.1rem; font-weight: 700;">${seeds}</p>
                     </div>
-                    <div style="background: rgba(33, 150, 243, 0.1); padding: 15px; border-radius: 10px; border-left: 3px solid #2196F3;">
-                        <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;"><i class="fas fa-hdd"></i> Скачано</p>
-                        <p style="color: #2196F3; font-size: 1.2rem; font-weight: 700;">${downloaded}</p>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 12px; border-radius: 8px; border-left: 3px solid #2196F3;">
+                        <p style="color: #888; font-size: 0.75rem; margin-bottom: 5px;"><i class="fas fa-hdd"></i> Скачано</p>
+                        <p style="color: #2196F3; font-size: 1.1rem; font-weight: 700;">${downloaded}</p>
                     </div>
-                    <div style="background: rgba(156, 39, 176, 0.1); padding: 15px; border-radius: 10px; border-left: 3px solid #9C27B0;">
-                        <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;"><i class="fas fa-upload"></i> Раздано</p>
-                        <p style="color: #9C27B0; font-size: 1.2rem; font-weight: 700;">${uploaded}</p>
+                    <div style="background: rgba(156, 39, 176, 0.1); padding: 12px; border-radius: 8px; border-left: 3px solid #9C27B0;">
+                        <p style="color: #888; font-size: 0.75rem; margin-bottom: 5px;"><i class="fas fa-upload"></i> Раздано</p>
+                        <p style="color: #9C27B0; font-size: 1.1rem; font-weight: 700;">${uploaded}</p>
                     </div>
                 </div>
             `;
         }
         
         // Show series streaming status window
-        function showSeriesStreamingStatus(torrent, episodePattern, videoUrl) {
+        function showSeriesStreamingStatus(torrent, episodePattern, videoUrl, episodeNum) {
             const overlay = document.createElement('div');
             overlay.id = 'seriesStreamingOverlay';
             overlay.className = 'torrents-overlay active';
             overlay.innerHTML = `
-                <div class="torrents-container" style="max-width: 800px;">
+                <div class="torrents-container" style="max-width: 700px;">
                     <div class="torrents-header">
-                        <h2><i class="fas fa-play-circle" style="color: #4CAF50;"></i> Воспроизведение</h2>
+                        <h2><i class="fas fa-play-circle" style="color: #4CAF50;"></i> Серия ${episodeNum}</h2>
                         <button class="torrents-close" onclick="stopSeriesStreaming()" style="background: rgba(244, 67, 54, 0.2); color: #f44336;">
-                            <i class="fas fa-stop"></i> Остановить
+                            <i class="fas fa-stop"></i>
                         </button>
                     </div>
                     <div class="player-info-detailed">
-                        <div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; margin-bottom: 25px;">
-                            <h3 style="color: var(--accent); margin-bottom: 20px; font-size: 1.3rem; text-align: center;">
-                                <i class="fas fa-info-circle"></i> Информация о серии
-                            </h3>
+                        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                            <p style="color: #888; font-size: 0.85rem; margin-bottom: 10px;"><strong>Файл:</strong></p>
+                            <p id="playingFilename" style="color: var(--accent); font-size: 1.1rem; margin-bottom: 15px;">${episodePattern}</p>
                             
-                            <div style="margin-bottom: 20px; text-align: center;">
-                                <p style="color: #888; font-size: 0.9rem; margin-bottom: 5px;">Файл серии:</p>
-                                <p style="color: var(--accent); font-size: 1.5rem; font-weight: 700;">${episodePattern}</p>
-                            </div>
+                            <p style="color: #888; font-size: 0.85rem; margin-bottom: 10px;"><strong>Раздача:</strong></p>
+                            <p style="color: var(--text-color); font-size: 0.95rem; margin-bottom: 15px; line-height: 1.5;">${escapeHtml(torrent.title)}</p>
                             
-                            <div style="margin-bottom: 20px;">
-                                <p style="color: #888; font-size: 0.9rem; margin-bottom: 10px;">Раздача:</p>
-                                <p style="color: var(--text-color); line-height: 1.6;">${escapeHtml(torrent.title)}</p>
-                            </div>
-                            
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
                                 <div>
-                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Трекер</p>
-                                    <p style="color: var(--accent); font-weight: 600;">${torrent.tracker}</p>
+                                    <p style="color: #888; font-size: 0.75rem;">Трекер</p>
+                                    <p style="color: var(--accent); font-weight: 600; font-size: 0.9rem;">${torrent.tracker}</p>
                                 </div>
                                 <div>
-                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Качество</p>
-                                    <p style="color: var(--accent); font-weight: 600;">${torrent.quality}</p>
+                                    <p style="color: #888; font-size: 0.75rem;">Качество</p>
+                                    <p style="color: var(--accent); font-weight: 600; font-size: 0.9rem;">${torrent.quality || 'Unknown'}</p>
                                 </div>
                                 <div>
-                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Сиды</p>
-                                    <p style="color: #4CAF50; font-weight: 600;">${torrent.seeds || 0}</p>
+                                    <p style="color: #888; font-size: 0.75rem;">Сиды</p>
+                                    <p style="color: #4CAF50; font-weight: 600; font-size: 0.9rem;">${torrent.seeds || 0}</p>
                                 </div>
                                 <div>
-                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Размер</p>
-                                    <p style="color: var(--text-color); font-weight: 600;">${torrent.size || 'Unknown'}</p>
+                                    <p style="color: #888; font-size: 0.75rem;">Размер</p>
+                                    <p style="color: var(--text-color); font-weight: 600; font-size: 0.9rem;">${torrent.size || '?'}</p>
                                 </div>
                             </div>
                         </div>
                         
-                        <div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; margin-bottom: 25px;">
-                            <h3 style="color: #4CAF50; margin-bottom: 15px; font-size: 1.2rem; text-align: center;">
-                                <i class="fas fa-chart-line"></i> Статистика загрузки
+                        <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                            <h3 style="color: #4CAF50; margin-bottom: 15px; font-size: 1.1rem; text-align: center;">
+                                <i class="fas fa-chart-line"></i> Статистика
                             </h3>
                             <div id="seriesStreamingStatus">
                                 <div class="search-loading">
                                     <i class="fas fa-spinner fa-spin"></i>
-                                    <p>Загрузка статистики...</p>
+                                    <p>Загрузка...</p>
                                 </div>
                             </div>
                         </div>
                         
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <a href="${videoUrl}" target="_blank" class="btn-load-more" style="text-decoration: none; text-align: center;">
-                                <i class="fas fa-external-link-alt"></i> Открыть плеер
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <a href="${videoUrl}" target="_blank" class="btn-load-more" style="text-decoration: none; text-align: center; font-size: 0.9rem; padding: 10px 15px;">
+                                <i class="fas fa-external-link-alt"></i> Плеер
                             </a>
-                            <button onclick="stopSeriesStreaming()" class="btn-load-more" style="background: rgba(244, 67, 54, 0.2); border-color: #f44336; color: #f44336;">
-                                <i class="fas fa-stop"></i> Остановить
+                            <button onclick="stopSeriesStreaming()" class="btn-load-more" style="background: rgba(244, 67, 54, 0.2); border-color: #f44336; color: #f44336; font-size: 0.9rem; padding: 10px 15px;">
+                                <i class="fas fa-stop"></i> Стоп
                             </button>
                         </div>
                     </div>

@@ -832,13 +832,25 @@ class BulbashTVApp:
         magnet = data.get("magnet") if data else None
         title = data.get("title", "") if data else ""
         query = data.get("query", "") if data else ""
+        episode_pattern = data.get("episode_pattern", "") if data else ""
 
-        logger.info(f"Start torrent: magnet={magnet[:50] if magnet else 'None'}..., title={title}")
+        logger.info(f"\n{'='*60}")
+        logger.info(f"[START TORRENT] {'='*60}")
+        logger.info(f"[START] Magnet: {magnet[:50] if magnet else 'None'}...")
+        logger.info(f"[START] Title: {title}")
+        logger.info(f"[START] Query: {query}")
+        logger.info(f"[START] Episode Pattern: {episode_pattern}")
+        logger.info(f"[START] {'='*60}\n")
 
-        success, message, video_url, progress = self.torrent_manager.start_streaming(magnet, title, query)
-        
-        logger.info(f"Result: success={success}, url={video_url}")
-        
+        success, message, video_url, progress = self.torrent_manager.start_streaming(magnet, title, query, episode_pattern)
+
+        logger.info(f"\n{'='*60}")
+        logger.info(f"[START RESULT] {'='*60}")
+        logger.info(f"[START] Success: {success}")
+        logger.info(f"[START] Message: {message}")
+        logger.info(f"[START] Video URL: {video_url}")
+        logger.info(f"[START] {'='*60}\n")
+
         return jsonify({
             "success": success,
             "message": message,

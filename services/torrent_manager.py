@@ -444,15 +444,20 @@ class TorrentManager:
 
     # ==================== Streaming with popcorn-mpv ====================
 
-    def start_streaming(self, magnet: Optional[str] = None, title: str = "", query: str = "") -> tuple[bool, str, str, Dict]:
+    def start_streaming(self, magnet: Optional[str] = None, title: str = "", query: str = "", episode_pattern: str = "") -> tuple[bool, str, str, Dict]:
         """Start torrent streaming with popcorn-mpv"""
-        print("=" * 50)
+        print("=" * 60)
         print("[POPCORN-MPV] Received start request")
+        print("=" * 60)
 
         if not magnet:
             magnet = "magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel"
 
         print(f"[POPCORN-MPV] Magnet link: {magnet[:50]}...")
+        print(f"[POPCORN-MPV] Title: {title}")
+        print(f"[POPCORN-MPV] Query: {query}")
+        print(f"[POPCORN-MPV] Episode Pattern: {episode_pattern}")
+        print("=" * 60)
 
         try:
             # Save to history
@@ -465,11 +470,15 @@ class TorrentManager:
             os.system("pkill -f 'node.*server.js' 2>/dev/null || true")
             time.sleep(1)
 
-            # Start striming-torrent-mpv server
-            cmd = f'cd {self.project_dir} && nohup node server.js "{magnet}" > {self.log_path} 2>&1 &'
+            # Start striming-torrent-mpv server with episode pattern
+            if episode_pattern:
+                cmd = f'cd {self.project_dir} && nohup node server.js "{magnet}" --episode "{episode_pattern}" > {self.log_path} 2>&1 &'
+            else:
+                cmd = f'cd {self.project_dir} && nohup node server.js "{magnet}" > {self.log_path} 2>&1 &'
+            
             print(f"[POPCORN-MPV] Starting: {cmd}")
             os.system(cmd)
-            
+
             # Wait for server to start (increased to 20 seconds)
             print("[POPCORN-MPV] Waiting for server to start (20s)...")
 
