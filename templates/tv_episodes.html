@@ -543,6 +543,149 @@
             50% { opacity: 0.7; }
         }
 
+        /* Series streaming bar - fixed at top */
+        .series-streaming-bar {
+            position: fixed;
+            top: 0;
+            left: 80px;  /* Sidebar width */
+            right: 0;
+            background: rgba(20, 20, 20, 0.98);
+            border-bottom: 2px solid var(--accent);
+            padding: 12px 30px;
+            z-index: 9999;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .bar-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 30px;
+            max-width: 100%;
+        }
+
+        .bar-left {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 200px;
+        }
+
+        .bar-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+
+        .bar-label {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .bar-filename {
+            color: var(--accent);
+            font-weight: 600;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .bar-center {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .bar-progress-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .bar-progress-bar {
+            flex: 1;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .bar-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #ffb700);
+            transition: width 0.3s;
+            border-radius: 4px;
+        }
+
+        .bar-progress-text {
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.85rem;
+            min-width: 45px;
+            text-align: right;
+        }
+
+        .bar-stats {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .bar-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+        }
+
+        .bar-stat-value {
+            font-weight: 600;
+        }
+
+        .bar-right {
+            display: flex;
+            gap: 10px;
+        }
+
+        .bar-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+
+        .bar-btn-primary {
+            background: rgba(218, 165, 32, 0.2);
+            color: var(--accent);
+            border: 2px solid var(--accent);
+        }
+
+        .bar-btn-primary:hover {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .bar-btn-danger {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            border: 2px solid #f44336;
+        }
+
+        .bar-btn-danger:hover {
+            background: #f44336;
+            color: #fff;
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             .tv-series-page {
@@ -1064,12 +1207,15 @@
         
         // Update series streaming status display
         function updateSeriesStreamingStatus(status, torrent, episodePattern) {
-            const statusDiv = document.getElementById('seriesStreamingStatus');
-            if (!statusDiv) return;
+            const bar = document.getElementById('seriesStreamingBar');
+            if (!bar) {
+                console.log(`[STATUS] Bar not found`);
+                return;
+            }
             
             // Update filename if available
             if (status.filename && status.filename !== 'Unknown') {
-                const filenameEl = document.getElementById('playingFilename');
+                const filenameEl = document.getElementById('barFilename');
                 if (filenameEl) {
                     filenameEl.textContent = status.filename;
                     console.log(`[STATUS] Playing file: ${status.filename}`);
@@ -1080,121 +1226,103 @@
             const downloadSpeed = status.download_speed || '0 MB/s';
             const seeds = status.seeds || 0;
             const downloaded = status.downloaded || '0 MB';
+            const time = status.time || '0:00';
             
-            console.log(`[STATUS] Progress: ${progress.toFixed(1)}% | Speed: ${downloadSpeed} | Seeds: ${seeds} | Downloaded: ${downloaded}`);
+            console.log(`[STATUS] Progress: ${progress.toFixed(1)}% | Speed: ${downloadSpeed} | Seeds: ${seeds} | Downloaded: ${downloaded} | Time: ${time}`);
             
-            statusDiv.innerHTML = `
-                <div style="margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.85rem;">
-                        <span style="color: #888;">Прогресс:</span>
-                        <span style="color: var(--accent); font-weight: 600;">${progress.toFixed(1)}%</span>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.1); border-radius: 6px; height: 12px; overflow: hidden;">
-                        <div style="
-                            background: linear-gradient(90deg, var(--accent), #ffb700);
-                            height: 100%;
-                            width: ${progress}%;
-                            transition: width 0.3s;
-                        "></div>
-                    </div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
-                    <div style="text-align: center;">
-                        <p style="color: #888; font-size: 0.7rem; margin-bottom: 3px;"><i class="fas fa-download"></i></p>
-                        <p style="color: #4CAF50; font-size: 0.85rem; font-weight: 700;">${downloadSpeed}</p>
-                    </div>
-                    <div style="text-align: center;">
-                        <p style="color: #888; font-size: 0.7rem; margin-bottom: 3px;"><i class="fas fa-users"></i></p>
-                        <p style="color: var(--accent); font-size: 0.85rem; font-weight: 700;">${seeds}</p>
-                    </div>
-                    <div style="text-align: center;">
-                        <p style="color: #888; font-size: 0.7rem; margin-bottom: 3px;"><i class="fas fa-hdd"></i></p>
-                        <p style="color: #2196F3; font-size: 0.85rem; font-weight: 700;">${downloaded}</p>
-                    </div>
-                    <div style="text-align: center;">
-                        <p style="color: #888; font-size: 0.7rem; margin-bottom: 3px;"><i class="fas fa-clock"></i></p>
-                        <p style="color: var(--text-color); font-size: 0.85rem;">${status.time || '0:00'}</p>
-                    </div>
-                </div>
-            `;
+            // Update progress bar
+            const progressFill = document.getElementById('barProgress');
+            const progressText = document.getElementById('barProgressText');
+            if (progressFill && progressText) {
+                progressFill.style.width = `${progress}%`;
+                progressText.textContent = `${progress.toFixed(1)}%`;
+            }
+            
+            // Update stats
+            const speedEl = document.getElementById('barSpeed');
+            const seedsEl = document.getElementById('barSeeds');
+            const downloadedEl = document.getElementById('barDownloaded');
+            const timeEl = document.getElementById('barTime');
+            
+            if (speedEl) speedEl.textContent = downloadSpeed;
+            if (seedsEl) seedsEl.textContent = seeds;
+            if (downloadedEl) downloadedEl.textContent = downloaded;
+            if (timeEl) timeEl.textContent = time;
         }
         
-        // Show series streaming status window
+        // Show series streaming status window - fixed bar at top
         function showSeriesStreamingStatus(torrent, episodePattern, videoUrl, episodeNum) {
             console.log(`\n${'='.repeat(60)}`);
-            console.log(`[TV] ========== STREAMING STATUS WINDOW ==========`);
+            console.log(`[TV] ========== STREAMING STATUS BAR ==========`);
             console.log(`[TV] Episode: ${episodeNum}`);
             console.log(`[TV] Pattern: ${episodePattern}`);
             console.log(`[TV] Video URL: ${videoUrl}`);
-            console.log(`[TV] Torrent: ${torrent.title}`);
             console.log(`${'='.repeat(60)}\n`);
             
-            const overlay = document.createElement('div');
-            overlay.id = 'seriesStreamingOverlay';
-            overlay.className = 'torrents-overlay active';
-            overlay.innerHTML = `
-                <div class="torrents-container" style="max-width: 650px;">
-                    <div class="torrents-header">
-                        <h2><i class="fas fa-play-circle" style="color: #4CAF50;"></i> Серия ${episodeNum}</h2>
-                        <button class="torrents-close" onclick="stopSeriesStreaming()" style="background: rgba(244, 67, 54, 0.2); color: #f44336;">
+            // Check if bar already exists
+            const existing = document.getElementById('seriesStreamingBar');
+            if (existing) {
+                console.log(`[TV] Status bar already exists, updating...`);
+                return;
+            }
+            
+            const bar = document.createElement('div');
+            bar.id = 'seriesStreamingBar';
+            bar.className = 'series-streaming-bar';
+            bar.innerHTML = `
+                <div class="bar-content">
+                    <div class="bar-left">
+                        <div class="bar-item">
+                            <i class="fas fa-play-circle" style="color: #4CAF50;"></i>
+                            <span class="bar-episode">Серия ${episodeNum}</span>
+                        </div>
+                        <div class="bar-item">
+                            <span class="bar-label">Файл:</span>
+                            <span id="barFilename" class="bar-filename">${episodePattern}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="bar-center">
+                        <div class="bar-progress-container">
+                            <div class="bar-progress-bar">
+                                <div id="barProgress" class="bar-progress-fill" style="width: 0%"></div>
+                            </div>
+                            <span id="barProgressText" class="bar-progress-text">0%</span>
+                        </div>
+                        <div class="bar-stats">
+                            <span class="bar-stat">
+                                <i class="fas fa-download" style="color: #4CAF50;"></i>
+                                <span id="barSpeed" class="bar-stat-value">0 MB/s</span>
+                            </span>
+                            <span class="bar-stat">
+                                <i class="fas fa-users" style="color: var(--accent);"></i>
+                                <span id="barSeeds" class="bar-stat-value">0</span>
+                            </span>
+                            <span class="bar-stat">
+                                <i class="fas fa-hdd" style="color: #2196F3;"></i>
+                                <span id="barDownloaded" class="bar-stat-value">0 MB</span>
+                            </span>
+                            <span class="bar-stat">
+                                <i class="fas fa-clock" style="color: #9C27B0;"></i>
+                                <span id="barTime" class="bar-stat-value">0:00</span>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="bar-right">
+                        <a href="${videoUrl}" target="_blank" class="bar-btn bar-btn-primary" title="Открыть плеер">
+                            <i class="fas fa-external-link-alt"></i>
+                        </a>
+                        <button onclick="stopSeriesStreaming()" class="bar-btn bar-btn-danger" title="Остановить">
                             <i class="fas fa-stop"></i>
                         </button>
                     </div>
-                    <div class="player-info-detailed">
-                        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 15px;">
-                            <p style="color: #888; font-size: 0.8rem; margin-bottom: 8px;"><strong>Файл:</strong></p>
-                            <p id="playingFilename" style="color: var(--accent); font-size: 0.95rem; margin-bottom: 12px; word-break: break-all;">${episodePattern}</p>
-                            
-                            <p style="color: #888; font-size: 0.8rem; margin-bottom: 8px;"><strong>Раздача:</strong></p>
-                            <p style="color: var(--text-color); font-size: 0.85rem; margin-bottom: 12px; line-height: 1.4; display: -webkit; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtml(torrent.title)}</p>
-                            
-                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
-                                <div>
-                                    <p style="color: #888; font-size: 0.7rem;">Трекер</p>
-                                    <p style="color: var(--accent); font-weight: 600; font-size: 0.8rem;">${torrent.tracker}</p>
-                                </div>
-                                <div>
-                                    <p style="color: #888; font-size: 0.7rem;">Качество</p>
-                                    <p style="color: var(--accent); font-weight: 600; font-size: 0.8rem;">${torrent.quality || '?'}</p>
-                                </div>
-                                <div>
-                                    <p style="color: #888; font-size: 0.7rem;">Сиды</p>
-                                    <p style="color: #4CAF50; font-weight: 600; font-size: 0.8rem;">${torrent.seeds || 0}</p>
-                                </div>
-                                <div>
-                                    <p style="color: #888; font-size: 0.7rem;">Размер</p>
-                                    <p style="color: var(--text-color); font-weight: 600; font-size: 0.8rem;">${torrent.size || '?'}</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 15px;">
-                            <h3 style="color: #4CAF50; margin-bottom: 12px; font-size: 0.95rem; text-align: center;">
-                                <i class="fas fa-chart-line"></i> Статистика
-                            </h3>
-                            <div id="seriesStreamingStatus">
-                                <div class="search-loading">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                    <p>Загрузка...</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                            <a href="${videoUrl}" target="_blank" class="btn-load-more" style="text-decoration: none; text-align: center; font-size: 0.85rem; padding: 8px 12px;">
-                                <i class="fas fa-external-link-alt"></i> Плеер
-                            </a>
-                            <button onclick="stopSeriesStreaming()" class="btn-load-more" style="background: rgba(244, 67, 54, 0.2); border-color: #f44336; color: #f44336; font-size: 0.85rem; padding: 8px 12px;">
-                                <i class="fas fa-stop"></i> Стоп
-                            </button>
-                        </div>
-                    </div>
                 </div>
             `;
-            document.body.appendChild(overlay);
             
-            console.log(`[TV] Status overlay created and appended to body`);
+            document.body.insertBefore(bar, document.body.firstChild);
+            
+            console.log(`[TV] Status bar created and inserted at top of page`);
             
             // Start polling immediately
             pollSeriesStatus(torrent, episodePattern);
@@ -1202,12 +1330,15 @@
         
         // Stop series streaming
         function stopSeriesStreaming() {
-            console.log(`[TV] Stopping series streaming...`);
+            console.log(`\n${'='.repeat(60)}`);
+            console.log(`[TV] ========== STOPPING STREAMING ==========`);
+            console.log(`${'='.repeat(60)}\n`);
             
             // Stop status polling
             if (window.seriesStatusInterval) {
                 clearInterval(window.seriesStatusInterval);
                 window.seriesStatusInterval = null;
+                console.log(`[TV] Status polling stopped`);
             }
             
             // Stop torrent
@@ -1216,10 +1347,11 @@
             .then(data => {
                 console.log(`[TV] Streaming stopped:`, data);
                 
-                // Close overlay
-                const overlay = document.getElementById('seriesStreamingOverlay');
-                if (overlay) {
-                    overlay.remove();
+                // Remove bar
+                const bar = document.getElementById('seriesStreamingBar');
+                if (bar) {
+                    bar.remove();
+                    console.log(`[TV] Status bar removed`);
                 }
                 
                 showNotification('Воспроизведение остановлено', 'success');
