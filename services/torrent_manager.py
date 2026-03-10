@@ -542,6 +542,12 @@ class TorrentManager:
                 with open(self.log_path, "r", encoding="utf-8", errors="ignore") as f:
                     log_content = f.read()
                     
+                    # Parse filename
+                    filename_match = re.search(r'Playing:\s*(.+?)(?:\n|$)', log_content)
+                    if filename_match:
+                        status["filename"] = filename_match.group(1).strip()
+                        print(f"[STATUS] Playing file: {status['filename']}")
+                    
                     # Parse download speed
                     speed_match = re.search(r'Download speed:\s*([\d.]+\s*[MGK]B/s)', log_content)
                     if speed_match:
@@ -564,8 +570,19 @@ class TorrentManager:
                     uploaded_match = re.search(r'Uploaded:\s*([\d.]+\s*[MGK]B)', log_content)
                     if uploaded_match:
                         status["uploaded"] = uploaded_match.group(1)
+                    
+                    # Parse time
+                    time_match = re.search(r'Time:\s*(\d+:\d+)', log_content)
+                    if time_match:
+                        status["time"] = time_match.group(1)
+                    
+                    # Parse progress
+                    progress_match = re.search(r'Progress:\s*([\d.]+)%', log_content)
+                    if progress_match:
+                        status["progress"] = float(progress_match.group(1))
                         
             except Exception as e:
-                print(f"[Status] Error reading log: {e}")
+                print(f"[STATUS] Error reading log: {e}")
         
+        print(f"[STATUS] {status}")
         return status
