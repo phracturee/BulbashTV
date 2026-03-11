@@ -119,15 +119,17 @@ class TorrentManager:
     MAX_CACHE_SIZE = 1000  # Maximum number of queries to cache
     DOWNLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "downloads")
     SERVER_JS = os.path.join(os.path.dirname(os.path.dirname(__file__)), "server.js")
+    LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
+    LOG_PATH = os.path.join(LOG_DIR, "striming-torrent-mpv.log")
 
     def __init__(self, project_dir: str):
         self.project_dir = project_dir
         self.searcher = TorrentSearcher()
         self.status = TorrentStatus()
-        self.log_path = "/tmp/striming-torrent-mpv.log"
         self.current_process = None
         os.makedirs(os.path.join(self.project_dir, "data"), exist_ok=True)
         os.makedirs(self.DOWNLOADS_DIR, exist_ok=True)
+        os.makedirs(self.LOG_DIR, exist_ok=True)
 
     def search(self, query: str, use_cache: bool = True) -> list[Dict[str, Any]]:
         """Search for torrents with caching"""
@@ -472,11 +474,12 @@ class TorrentManager:
 
             # Start striming-torrent-mpv server with episode pattern
             if episode_pattern:
-                cmd = f'cd {self.project_dir} && nohup node server.js "{magnet}" --episode "{episode_pattern}" > {self.log_path} 2>&1 &'
+                cmd = f'cd {self.project_dir} && nohup node server.js "{magnet}" --episode "{episode_pattern}" > {self.LOG_PATH} 2>&1 &'
             else:
-                cmd = f'cd {self.project_dir} && nohup node server.js "{magnet}" > {self.log_path} 2>&1 &'
+                cmd = f'cd {self.project_dir} && nohup node server.js "{magnet}" > {self.LOG_PATH} 2>&1 &'
             
             print(f"[POPCORN-MPV] Starting: {cmd}")
+            print(f"[POPCORN-MPV] Log file: {self.LOG_PATH}")
             os.system(cmd)
 
             # Wait for server to start (increased to 20 seconds)
@@ -532,14 +535,14 @@ class TorrentManager:
 
     def get_status(self) -> Dict[str, Any]:
         """Get current torrent status"""
-        self.status.update_from_log(self.log_path)
+        self.status.update_from_log(self.LOG_PATH)
         self.status.check_process_running()
         status = self.status.to_dict()
         
         # Try to get additional info from log
-        if os.path.exists(self.log_path):
+        if os.path.exists(self.LOG_PATH):
             try:
-                with open(self.log_path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(self.LOG_PATH, "r", encoding="utf-8", errors="ignore") as f:
                     log_content = f.read()
                     
                     # Parse filename
@@ -582,7 +585,7 @@ class TorrentManager:
                         status["progress"] = float(progress_match.group(1))
                         
             except Exception as e:
-                print(f"[STATUS] Error reading log: {e}")
+                print(f"[STATUS] Error reading log from {self.LOG_PATH}: {e}")
         
         print(f"[STATUS] {status}")
         return status
