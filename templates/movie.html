@@ -1012,15 +1012,13 @@
                     `;
 
                     modal.innerHTML = `
-                        <div class="modal-content" style="background: #000000; border: 2px solid var(--accent); border-radius: 15px; padding: 30px;">
+                        <div class="modal-content" style="background: #000000; border: 2px solid var(--accent); border-radius: 15px; padding: 30px; position: relative;">
+                            <button onclick="closeFolderModal()" style="position: absolute; top: 15px; right: 15px; background: rgba(218,165,32,0.2); color: var(--accent); border: 2px solid var(--accent); width: 35px; height: 35px; border-radius: 50%; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
+                                <i class="fas fa-times"></i>
+                            </button>
                             <h3 style="color: var(--accent); margin-bottom: 20px; font-size: 1.3rem;"><i class="fas fa-folder-plus"></i> Добавить в папку</h3>
                             <div class="folder-list">
                                 ${foldersHtml}
-                            </div>
-                            <div class="modal-buttons" style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
-                                <button onclick="closeFolderModal()" class="btn-secondary" style="background: rgba(218,165,32,0.2); color: var(--accent); border: 2px solid var(--accent); padding: 12px 30px; border-radius: 25px; cursor: pointer; transition: all 0.3s; font-weight: 600; font-size: 0.95rem;">
-                                    <i class="fas fa-times" style="margin-right: 8px;"></i>Отмена
-                                </button>
                             </div>
                         </div>
                     `;
