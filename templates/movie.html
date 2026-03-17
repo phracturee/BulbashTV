@@ -1072,24 +1072,26 @@
             .then(r => r.json())
             .then(checkData => {
                 const currentFolders = checkData.folders || [];
-                
+                console.log('[updateFolderModalUI] currentFolders:', currentFolders);
+
                 // Обновляем все опции папок
                 document.querySelectorAll('.folder-option').forEach(option => {
-                    const folderId = option.dataset.folderId;
+                    const folderId = option.getAttribute('data-folder-id');
+                    console.log('[updateFolderModalUI] folder-option:', folderId, 'isInFolder:', currentFolders.includes(folderId));
                     if (!folderId) return;
-                    
+
                     const isInFolder = currentFolders.includes(folderId);
-                    
+
                     // Обновляем классы и стили
                     option.classList.toggle('in-folder', isInFolder);
                     option.style.border = isInFolder ? '1px solid var(--accent)' : '1px solid transparent';
-                    
+
                     // Обновляем иконку папки
                     const folderIcon = option.querySelector('.fa-folder');
                     if (folderIcon) {
                         folderIcon.className = `fas fa-folder${isInFolder ? '' : '-open'}`;
                     }
-                    
+
                     // Обновляем или создаём галочку
                     let checkIcon = option.querySelector('.fa-check');
                     if (isInFolder) {
@@ -1103,10 +1105,11 @@
                         checkIcon.remove();
                     }
                 });
-                
+
                 // Обновляем иконку сердца на странице
                 const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
                 const isFavorite = currentFolders.length > 0 && !currentFolders.includes('watched');
+                console.log('[updateFolderModalUI] isFavorite:', isFavorite);
                 if (btn) {
                     btn.classList.toggle('active', isFavorite);
                     const icon = btn.querySelector('i');
@@ -1125,6 +1128,8 @@
             const option = event.currentTarget;
             const isInFolder = option.classList.contains('in-folder');
             
+            console.log('[handleFolderOptionClick] folderId:', folderId, 'itemId:', itemId, 'isInFolder:', isInFolder);
+            
             const item = {
                 id: itemId,
                 title: "{{ item.title }}",
@@ -1137,20 +1142,23 @@
             
             if (isInFolder) {
                 // Удаляем из папки
+                console.log('[handleFolderOptionClick] Removing from folder:', folderId);
                 fetch(`/api/favorites/remove/${itemId}?folder_id=${folderId}`, { method: 'DELETE' })
                 .then(r => r.json())
                 .then(data => {
+                    console.log('[handleFolderOptionClick] Remove response:', data);
                     if (data.success) {
                         showNotification('Удалено из папки', 'info');
                         updateFolderModalUI(itemId);
                     }
                 })
                 .catch(err => {
-                    console.error('Error removing:', err);
+                    console.error('[handleFolderOptionClick] Error removing:', err);
                     showNotification('Ошибка при удалении', 'error');
                 });
             } else {
                 // Добавляем в папку
+                console.log('[handleFolderOptionClick] Adding to folder:', folderId);
                 fetch('/api/favorites/add', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1158,6 +1166,7 @@
                 })
                 .then(r => r.json())
                 .then(data => {
+                    console.log('[handleFolderOptionClick] Add response:', data);
                     if (data.success) {
                         showNotification(`Добавлено в "${data.folder_name}"!`, 'success');
                         updateFolderModalUI(itemId);
@@ -1166,7 +1175,7 @@
                     }
                 })
                 .catch(err => {
-                    console.error('Error adding:', err);
+                    console.error('[handleFolderOptionClick] Error adding:', err);
                     showNotification('Ошибка при добавлении', 'error');
                 });
             }
