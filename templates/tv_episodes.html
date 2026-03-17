@@ -531,7 +531,7 @@
 
         /* Series info styles */
         .torrent-info-detailed {
-            padding: 20px;
+            padding: 0;
         }
 
         .torrent-info-detailed h3 {
@@ -1290,7 +1290,7 @@
             overlay.innerHTML = `
                 <div class="torrents-container" style="max-width: 700px;">
                     <div class="torrents-header">
-                        <h2><i class="fas fa-tv"></i> Воспроизведение серии</h2>
+                        <h2><i class="fas fa-play-circle"></i> Стриминг</h2>
                         <button class="torrents-close" onclick="hideLoadingOverlay()">
                             <i class="fas fa-times"></i>
                         </button>
@@ -1381,19 +1381,15 @@
                 const { pattern, torrent } = data;
                 content.innerHTML = `
                     <div class="torrent-info-detailed">
-                        <h3 style="color: #4CAF50; margin-bottom: 20px; text-align: center;">
-                            <i class="fas fa-play-circle"></i> Воспроизведение
-                        </h3>
-                        
-                        <div style="background: #000000; padding: 25px; border-radius: 15px; margin-bottom: 20px; border: 1px solid rgba(218,165,32,0.3);">
-                            <p style="margin-bottom: 15px; color: #888; font-size: 0.9rem;"><strong>Раздача:</strong></p>
-                            <p style="color: var(--text-color); line-height: 1.5; word-break: break-word; margin-bottom: 20px;">${escapeHtml(torrent.title)}</p>
+                        <div style="background: #000000; padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                            <p style="margin-bottom: 10px; color: #888; font-size: 0.85rem;">Раздача:</p>
+                            <p style="color: var(--text-color); line-height: 1.5; word-break: break-word; margin-bottom: 15px;">${escapeHtml(torrent.title)}</p>
                             
-                            <p style="margin-bottom: 10px; color: #888; font-size: 0.9rem;"><strong>Воспроизводимый файл:</strong></p>
-                            <p id="streamFilename" style="color: var(--accent); font-size: 1.1rem; margin-bottom: 20px;">${pattern}</p>
+                            <p style="margin-bottom: 10px; color: #888; font-size: 0.85rem;">Файл:</p>
+                            <p id="streamFilename" style="color: var(--accent); font-size: 1rem; margin-bottom: 15px;">${pattern}</p>
                         </div>
                         
-                        <div style="background: #000000; padding: 20px; border-radius: 15px; border: 1px solid rgba(218,165,32,0.3);">
+                        <div style="background: #000000; padding: 20px; border-radius: 15px;">
                             <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 1rem;">
                                 <i class="fas fa-chart-bar"></i> Статистика
                             </h4>
