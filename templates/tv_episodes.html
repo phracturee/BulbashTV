@@ -983,7 +983,18 @@
 
         // Watch episode - search series and start streaming
         function watchEpisode(season, episode) {
-            const seriesName = TV_TITLE;
+            // Format: "Russian Name / English Name / Season: X"
+            let seriesName = TV_TITLE;
+            
+            // If title contains both Russian and English (separated by /)
+            if (TV_TITLE.includes('/')) {
+                const parts = TV_TITLE.split('/');
+                if (parts.length >= 2) {
+                    const russianName = parts[0].trim();
+                    const englishName = parts[1].trim();
+                    seriesName = `${russianName} / ${englishName}`;
+                }
+            }
 
             console.log(`\n${'='.repeat(60)}`);
             console.log(`[TV] ========== WATCH EPISODE STARTED ==========`);
@@ -1006,16 +1017,45 @@
                 console.log(`\n${'='.repeat(60)}`);
                 console.log(`[TV] Search API response:`, data);
                 console.log(`${'='.repeat(60)}\n`);
-                
+
                 if (data.success && data.results && data.results.length > 0) {
+                    // Filter out excluded patterns and find best match
+                    const excludedPatterns = [
+                        /битва экстрасенсов/i,
+                        /новая битва экстрасенсов/i,
+                        /битва сильнейших/i,
+                        /голос\.дети/i,
+                        /голос\s+\d+/i,
+                        /фабрика\s+звезд/i,
+                        /дом[-\s]?2/i,
+                        /первый\s+канал/i,
+                        /россия\s+1/i,
+                        /эфир\s+от/i,
+                        /выпуск\s+\d+/i,
+                    ];
+
+                    // Filter results
+                    const filteredResults = data.results.filter(r => {
+                        const titleLower = r.title.toLowerCase();
+                        for (const pattern of excludedPatterns) {
+                            if (pattern.test(titleLower)) {
+                                console.log(`[TV] Excluded: ${r.title}`);
+                                return false;
+                            }
+                        }
+                        return true;
+                    });
+
+                    console.log(`[TV] Filtered ${data.results.length} -> ${filteredResults.length} results`);
+
                     // Find the torrent with matching season number
-                    const torrent = data.results.find(r => {
+                    const torrent = filteredResults.find(r => {
                         const titleLower = r.title.toLowerCase();
                         // Check if season number matches exactly (not 2 for 22)
                         const seasonPattern = new RegExp(`сезон[:\\s]*${season}\\b`, 'i');
                         return seasonPattern.test(titleLower);
-                    }) || data.results[0];
-                    
+                    }) || (filteredResults.length > 0 ? filteredResults[0] : data.results[0]);
+
                     console.log(`\n${'='.repeat(60)}`);
                     console.log(`[TV] ========== SELECTED TORRENT ==========`);
                     console.log(`[TV] Title: ${torrent.title}`);

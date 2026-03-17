@@ -392,15 +392,40 @@ class TorrentSearcher:
     def _is_correct_series(self, title: str, series_name: str, season: int) -> bool:
         """Check if torrent title matches series and season exactly"""
         import re
-        
+
         # Normalize title
         title_lower = title.lower()
         series_lower = series_name.lower()
-        
+
         # Check if series name matches (exact match, not partial)
         if series_lower not in title_lower:
             return False
-        
+
+        # Exclude TV show titles that are not the target series
+        # Common patterns for wrong matches
+        exclude_patterns = [
+            r'битва экстрасенсов',
+            r'новая битва экстрасенсов',
+            r'битва сильнейших',
+            r'голос\.дети',
+            r'голос\s+\d+',
+            r'фабрика\s+звезд',
+            r'дом[-\s]?2',
+            r'первый\s+канал',
+            r'россия\s+1',
+            r'нтв\b',
+            r'тнт\b',
+            r'стс\b',
+            r'матч\s+тв',
+            r'эфир\s+от',
+            r'выпуск\s+\d+',
+        ]
+
+        for pattern in exclude_patterns:
+            if re.search(pattern, title_lower):
+                print(f"[Filter] Excluded by pattern '{pattern}': {title}")
+                return False
+
         # Check season number - must match exactly (not 2 for 22)
         # Look for "Сезон: X" or "Season X" pattern
         season_patterns = [
@@ -408,22 +433,25 @@ class TorrentSearcher:
             rf'сезон\s+{season}\b',   # Сезон 2
             rf'season\s*{season}\b',   # Season 2
             rf's{season:02d}\b',       # S02 or S2
+            rf's{season}\b',           # S2
+            rf's\.?{season:02d}\b',    # S.02 or S.2
+            rf's\.?{season}\b',        # S.2
         ]
-        
+
         season_found = False
         for pattern in season_patterns:
             if re.search(pattern, title_lower):
                 season_found = True
                 break
-        
+
         if not season_found:
             return False
-        
+
         # Make sure it's not a wrong season (e.g., 2 for 22)
         # Check that season number is not part of a larger number
         wrong_seasons = [i for i in range(1, 100) if i != season and str(i) in str(season)]
         for wrong in wrong_seasons:
             if re.search(rf'сезон:\s*{wrong}\b', title_lower):
                 return False
-        
+
         return True
