@@ -1549,6 +1549,27 @@
                 const peersText = data.peers || 0;
                 const downloadedText = data.downloaded || '0 MB';
                 const filename = data.filename || '';
+                
+                // Parse AV position for playback progress
+                let avPercent = 0;
+                let avCurrent = '';
+                let avTotal = '';
+                let isPaused = false;
+                
+                if (data.av_line) {
+                    // Parse "AV: 00:02:15 / 00:43:15 (5%)"
+                    const avMatch = data.av_line.match(/AV:\s*(\d+:\d+:\d+)\s*\/\s*(\d+:\d+:\d+)\s*\((\d+)%\)/);
+                    if (avMatch) {
+                        avCurrent = avMatch[1];
+                        avTotal = avMatch[2];
+                        avPercent = parseInt(avMatch[3]);
+                    }
+                }
+                
+                // Check if paused (look for paused indicator in status)
+                if (data.av_line && data.av_line.includes('Paused')) {
+                    isPaused = true;
+                }
 
                 // Update UI elements
                 const progressEl = document.getElementById('streamProgress');
@@ -1566,6 +1587,48 @@
                 if (downloadedEl) downloadedEl.textContent = downloadedText;
                 if (peersEl) peersEl.textContent = peersText;
                 if (filenameEl && filename) filenameEl.textContent = filename;
+                
+                // Update or create playback progress section
+                let playbackEl = document.getElementById('playbackProgress');
+                if (avPercent > 0 || avCurrent) {
+                    if (!playbackEl) {
+                        // Create playback progress section
+                        const statsContainer = document.querySelector('.torrent-info-detailed > div:last-child');
+                        if (statsContainer) {
+                            playbackEl = document.createElement('div');
+                            playbackEl.id = 'playbackProgress';
+                            playbackEl.style.cssText = 'background: #000000; padding: 20px; border-radius: 15px; margin-top: 20px; border: 1px solid rgba(218,165,32,0.3);';
+                            statsContainer.insertAdjacentElement('afterend', playbackEl);
+                        }
+                    }
+                    
+                    if (playbackEl) {
+                        const pauseIcon = isPaused ? '<i class="fas fa-pause-circle" style="color: #FFA500; margin-right: 8px;"></i>' : '<i class="fas fa-play-circle" style="color: #4CAF50; margin-right: 8px;"></i>';
+                        const pauseText = isPaused ? ' (Paused)' : '';
+                        
+                        playbackEl.innerHTML = `
+                            <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 1rem;">
+                                ${pauseIcon}Просмотр${pauseText}
+                            </h4>
+                            <div style="margin-bottom: 15px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span style="color: #888; font-size: 0.85rem;">Просмотрено</span>
+                                    <span style="color: var(--accent); font-size: 0.85rem; font-weight: 600;">${avPercent}%</span>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 8px; overflow: hidden;">
+                                    <div id="playbackProgressBar" style="background: linear-gradient(90deg, #4CAF50, #8BC34A); height: 100%; width: ${avPercent}%; transition: width 0.3s;"></div>
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: var(--text-color); font-size: 1.1rem; font-weight: 600;">${avCurrent || '0:00:00'}</span>
+                                <span style="color: #888; font-size: 0.9rem;">/ ${avTotal || '0:00:00'}</span>
+                            </div>
+                        `;
+                    }
+                } else if (playbackEl) {
+                    // Remove playback section if no data
+                    playbackEl.remove();
+                }
             })
             .catch(err => {
                 console.log('[Status] Poll error:', err);
