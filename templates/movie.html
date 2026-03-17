@@ -984,7 +984,9 @@
                              data-item-vote-average="{{ item.vote_average }}"
                              data-item-release-date="{{ item.release_date or item.year }}"
                              data-item-overview="{{ item.overview|replace('"', '&quot;') }}"
-                             style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 1px solid ${isInFolder ? 'var(--accent)' : 'transparent'};">
+                             style="display: flex; align-items: center; gap: 15px; padding: 15px; background: #000000; border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 1px solid ${isInFolder ? 'var(--accent)' : 'transparent'};"
+                             onmouseover="if (!this.classList.contains('in-folder')) this.style.border='1px solid var(--accent)'"
+                             onmouseout="if (!this.classList.contains('in-folder')) this.style.border='1px solid transparent'">
                             <i class="fas fa-folder${isInFolder ? '' : '-open'}" style="color: var(--accent); font-size: 1.5rem;"></i>
                             <div class="folder-option-info" style="flex: 1;">
                                 <h4 style="margin: 0 0 5px 0; color: var(--text-color);">${folder.name}</h4>
@@ -998,7 +1000,9 @@
                 // Add "Watched" button before "Create new folder" (like on homepage)
                 const isWatched = currentFolders.includes('watched');
                 foldersHtml += `
-                    <div class="folder-option watched-option ${isWatched ? 'in-folder' : ''}" data-folder-id="watched" data-item-id="${itemId}" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(76,175,80,0.1); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border-left: 3px solid #4CAF50;">
+                    <div class="folder-option watched-option ${isWatched ? 'in-folder' : ''}" data-folder-id="watched" data-item-id="${itemId}" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: #000000; border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 1px solid ${isWatched ? 'var(--accent)' : 'transparent'};"
+                             onmouseover="if (!this.classList.contains('in-folder')) this.style.border='1px solid var(--accent)'"
+                             onmouseout="if (!this.classList.contains('in-folder')) this.style.border='1px solid transparent'">
                         <i class="fas fa-eye" style="color: #4CAF50; font-size: 1.5rem;"></i>
                         <div class="folder-option-info" style="flex: 1;">
                             <h4 style="margin: 0 0 5px 0; color: var(--text-color);">Просмотренное</h4>
@@ -1010,7 +1014,9 @@
 
                 // Add "Create new folder" option at the end
                 foldersHtml += `
-                    <div class="folder-option create-new-folder" data-folder-id="new" data-item-id="${itemId}" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(218,165,32,0.05); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 1px solid transparent;">
+                    <div class="folder-option create-new-folder" data-folder-id="new" data-item-id="${itemId}" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: #000000; border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 1px solid transparent;"
+                             onmouseover="this.style.border='1px solid var(--accent)'"
+                             onmouseout="this.style.border='1px solid transparent'">
                         <i class="fas fa-plus-circle" style="color: var(--accent); font-size: 1.5rem;"></i>
                         <div class="folder-option-info" style="flex: 1;">
                             <h4 style="margin: 0 0 5px 0; color: var(--text-color);">Создать новую папку</h4>
