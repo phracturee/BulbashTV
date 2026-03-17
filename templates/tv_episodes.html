@@ -498,13 +498,29 @@
             color: #fff;
             font-size: 1.5rem;
             cursor: pointer;
-            padding: 5px 10px;
-            border-radius: 5px;
-            transition: background 0.3s;
+            padding: 8px;
+            border-radius: 50%;
+            transition: all 0.3s;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .torrents-close:hover {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.15);
+            color: var(--accent);
+        }
+
+        .torrents-container {
+            width: 100%;
+            max-width: 900px;
+            background: #0a0a0a;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 20px;
+            border: 1px solid rgba(218, 165, 32, 0.2);
         }
 
         /* Series loading overlay styles */
@@ -1143,32 +1159,10 @@
                                     <p style="color: var(--accent);">${torrent.quality}</p>
                                 </div>
                                 <div>
-                                    <p style="color: #888; font-size: 0.85rem;">Сиды</p>
-                                    <p style="color: #4CAF50;">${torrent.seeds || 0}</p>
-                                </div>
-                                <div>
                                     <p style="color: #888; font-size: 0.85rem;">Размер</p>
                                     <p style="color: var(--text-color);">${torrent.size || 'Unknown'}</p>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div style="background: #000000; padding: 25px; border-radius: 15px; margin-bottom: 25px; border: 1px solid rgba(218,165,32,0.3);">
-                            <h3 style="color: #4CAF50; margin-bottom: 15px; font-size: 1.2rem;">
-                                <i class="fas fa-folder-open"></i> Файл воспроизведения
-                            </h3>
-                            <div id="fileList">
-                                <div class="search-loading">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                    <p>Загрузка списка файлов...</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div style="text-align: center;">
-                            <a href="${videoUrl}" target="_blank" class="btn-load-more" style="text-decoration: none;">
-                                <i class="fas fa-external-link-alt"></i> Открыть плеер
-                            </a>
                         </div>
                     </div>
                 </div>
@@ -1296,7 +1290,6 @@
                                         <p style="color: var(--text-color);">S${season < 10 ? '0'+season : season}E${episode < 10 ? '0'+episode : episode}</p>
                                     </div>
                                 </div>
-                                <p style="color: #888; margin-top: 20px; text-align: center;"><i class="fas fa-search"></i> Ищем на RuTracker...</p>
                             </div>
                         </div>
                     </div>

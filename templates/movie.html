@@ -32,11 +32,12 @@
         .player-container, .torrents-container {
             width: 100%;
             max-width: 900px;
-            background: rgba(20, 20, 20, 0.95);
+            background: #0a0a0a;
             border-radius: 15px;
             padding: 30px;
             margin-top: 20px;
-            overflow: visible;  /* Allow button to be visible */
+            overflow: visible;
+            border: 1px solid rgba(218, 165, 32, 0.2);
         }
 
         .torrents-list {
@@ -68,13 +69,19 @@
             color: #fff;
             font-size: 1.5rem;
             cursor: pointer;
-            padding: 5px 10px;
-            border-radius: 5px;
-            transition: background 0.3s;
+            padding: 8px;
+            border-radius: 50%;
+            transition: all 0.3s;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        
+
         .player-close:hover, .torrents-close:hover {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.15);
+            color: var(--accent);
         }
         
         .player-loading {
@@ -414,12 +421,54 @@
                 <h3>Запуск видео...</h3>
                 <p id="playerStatus" style="color: #888; margin-top: 10px;">Подключение к серверу...</p>
 
+                <!-- Streaming info panel (hidden by default) -->
+                <div id="streamingInfo" style="display: none; margin-top: 25px; background: #000000; padding: 20px; border-radius: 15px; border: 1px solid rgba(218,165,32,0.3);">
+                    <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 1.1rem;">
+                        <i class="fas fa-chart-bar"></i> Информация о стриминге
+                    </h4>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Файл:</p>
+                        <p id="streamFilename" style="color: var(--text-color); font-size: 0.95rem; word-break: break-all;">-</p>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Прогресс загрузки</p>
+                            <p id="streamProgress" style="color: #4CAF50; font-size: 1.2rem; font-weight: 600;">0%</p>
+                        </div>
+                        <div>
+                            <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Скорость</p>
+                            <p id="streamSpeed" style="color: var(--accent); font-size: 1.1rem;">0 MB/s</p>
+                        </div>
+                        <div>
+                            <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Скачано</p>
+                            <p id="streamDownloaded" style="color: var(--text-color); font-size: 1rem;">0 MB</p>
+                        </div>
+                        <div>
+                            <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Пиры</p>
+                            <p id="streamPeers" style="color: var(--text-color); font-size: 1rem;">0</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Progress bar -->
+                    <div style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="color: #888; font-size: 0.85rem;">Загрузка торрента</span>
+                            <span id="streamProgressPercent" style="color: var(--accent); font-size: 0.85rem;">0%</span>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 8px; overflow: hidden;">
+                            <div id="streamProgressBar" style="background: linear-gradient(90deg, var(--accent), #ffb700); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
                     <button onclick="closePlayer()" style="padding: 12px 25px; background: #ff4444; border: none; border-radius: 5px; color: white; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-stop"></i> Остановить
                     </button>
                 </div>
-                
+
                 <p style="color: #666; font-size: 0.85rem; margin-top: 20px;">
                     Окно закроется автоматически после завершения воспроизведения
                 </p>
@@ -731,7 +780,13 @@
 
         function startStatusPolling(magnet) {
             currentMagnet = magnet;
-            
+
+            // Show streaming info panel
+            const streamingInfo = document.getElementById('streamingInfo');
+            if (streamingInfo) {
+                streamingInfo.style.display = 'block';
+            }
+
             // Save progress every 10 seconds
             progressInterval = setInterval(() => {
                 // Get current position from video element (if available)
@@ -740,24 +795,50 @@
                     saveProgress(magnet, Math.floor(video.currentTime), Math.floor(video.duration));
                 }
             }, 10000);
-            
+
             statusCheckInterval = setInterval(() => {
                 fetch('/api/torrent/status')
                 .then(r => r.json())
                 .then(data => {
                     console.log('[Status]', data);
-                    
-                    if (data.progress) {
-                        const progressText = data.progress.toFixed(1) + '%';
+
+                    // Update streaming info panel
+                    if (data.progress !== undefined) {
+                        // Cap progress at 100%
+                        const cappedProgress = Math.min(data.progress, 100);
+                        const progressText = cappedProgress.toFixed(1) + '%';
                         const speedText = data.speed || '0 MB/s';
                         const peersText = data.peers || 0;
-                        
+                        const downloadedText = data.downloaded || '0 MB';
+
+                        // Update text values
+                        const progressEl = document.getElementById('streamProgress');
+                        const progressPercentEl = document.getElementById('streamProgressPercent');
+                        const progressBarEl = document.getElementById('streamProgressBar');
+                        const speedEl = document.getElementById('streamSpeed');
+                        const downloadedEl = document.getElementById('streamDownloaded');
+                        const peersEl = document.getElementById('streamPeers');
+
+                        if (progressEl) progressEl.textContent = progressText;
+                        if (progressPercentEl) progressPercentEl.textContent = progressText;
+                        if (progressBarEl) progressBarEl.style.width = cappedProgress + '%';
+                        if (speedEl) speedEl.textContent = speedText;
+                        if (downloadedEl) downloadedEl.textContent = downloadedText;
+                        if (peersEl) peersEl.textContent = peersText;
+
+                        // Update status message (without "Ожидание данных MPV...")
                         updateStatus(
                             `Загрузка: ${progressText} | Скорость: ${speedText} | Пиры: ${peersText}`,
                             'loading'
                         );
                     }
-                    
+
+                    // Update filename if available
+                    if (data.filename) {
+                        const filenameEl = document.getElementById('streamFilename');
+                        if (filenameEl) filenameEl.textContent = data.filename;
+                    }
+
                     // Only close if explicitly completed by user
                     // Don't close on 'stopped' or errors
                     if (data.status === 'completed') {
