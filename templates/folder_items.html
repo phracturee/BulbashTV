@@ -254,7 +254,7 @@
 
     <!-- Modal for rename folder -->
     <div id="renameModal" class="modal" style="display: none;">
-        <div class="modal-content" style="background: #000000; border: 2px solid var(--accent); border-radius: 15px; padding: 30px;">
+        <div class="modal-content" style="background: #000000; border: 2px solid var(--accent); border-radius: 15px; padding: 30px; max-width: 500px; width: 90%;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h3 style="color: var(--accent); margin: 0; font-size: 1.3rem;"><i class="fas fa-edit"></i> Переименовать папку</h3>
                 <button onclick="closeRenameModal()" style="background: none; color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='var(--accent)'" onmouseout="this.style.background='none';this.style.color='#fff'">
@@ -263,8 +263,7 @@
             </div>
             <input type="text" id="renameFolderName" placeholder="Название папки" maxlength="50" value="{{ title }}" style="width: 100%; padding: 15px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; color: var(--text-color); font-family: var(--font); font-size: 1rem; margin-bottom: 20px; box-sizing: border-box;">
             <div class="modal-buttons" style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button onclick="closeRenameModal()" class="btn-secondary" style="background: rgba(255,255,255,0.1); color: var(--text-color); border: 1px solid rgba(255,255,255,0.2); padding: 12px 24px; border-radius: 20px; cursor: pointer; transition: all 0.3s; font-weight: 600;">Отмена</button>
-                <button onclick="submitRename('{{ folder_id }}')" class="btn-primary" style="background: var(--accent); color: #000; border: none; padding: 12px 24px; border-radius: 20px; cursor: pointer; transition: all 0.3s; font-weight: 600;">Сохранить</button>
+                <button onclick="submitRename('{{ folder_id }}')" class="btn-primary" style="background: var(--accent); color: #000; border: none; padding: 12px 30px; border-radius: 20px; cursor: pointer; transition: all 0.3s; font-weight: 600; width: 100%;">Сохранить</button>
             </div>
         </div>
     </div>
