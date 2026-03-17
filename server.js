@@ -112,6 +112,18 @@ torrent.on('metadata', () => {
         if (season && episode) {
             console.log(`🎯 Сезон: ${season}, Серия: ${episode}`);
             
+            // More precise regex patterns for season/episode extraction
+            const seasonEpisodePatterns = [
+                // S01E01, S1E1
+                /S(\d+)E(\d+)/i,
+                // S01.E01, S1.E1 (with dot)
+                /S(\d+)\.E(\d+)/i,
+                // 1x01, 01x01
+                /(\d+)x(\d+)/i,
+                // Серия 1, Episode 1
+                /(?:Серия|Episode)\s*(\d+)/i,
+            ];
+
             for (let i = 0; i < torrent.files.length; i++) {
                 const file = torrent.files[i];
                 const fileName = file.name;
@@ -121,23 +133,27 @@ torrent.on('metadata', () => {
                 const ext = path.extname(fileName).toLowerCase();
                 if (!videoExts.includes(ext)) continue;
 
-                // Extract season and episode from filename
-                // Patterns: S01E10, S1.E10, 1x10, Серия 10, Episode 10
-                const fileMatch = fileNameLower.match(/s?(\d+)\.?e?(\d+)|(\d+)x(\d+)|(?:серия|episode)\s*(\d+)/i);
-                
-                if (fileMatch) {
-                    const fileSeason = parseInt(fileMatch[1] || fileMatch[3] || fileMatch[5]);
-                    const fileEpisode = parseInt(fileMatch[2] || fileMatch[4] || fileMatch[5]);
+                // Try each pattern for exact season/episode match
+                for (const pattern of seasonEpisodePatterns) {
+                    const fileMatch = fileName.match(pattern);
+                    
+                    if (fileMatch) {
+                        const fileSeason = parseInt(fileMatch[1]);
+                        const fileEpisode = parseInt(fileMatch[2]);
 
-                    // Exact match for both season and episode (S01E01 != S01E10)
-                    if (fileSeason === season && fileEpisode === episode) {
-                        console.log(`✅ Найдено точное совпадение: ${file.name}`);
-                        videoFile = file;
-                        fileIndex = i;
-                        maxSize = file.length;
-                        break;
+                        console.log(`🔍 Проверка: ${file.name} -> S${fileSeason}E${fileEpisode} (ищем S${season}E${episode})`);
+
+                        // Exact match for both season and episode (S01E01 != S01E10)
+                        if (fileSeason === season && fileEpisode === episode) {
+                            console.log(`✅ Найдено точное совпадение: ${file.name}`);
+                            videoFile = file;
+                            fileIndex = i;
+                            maxSize = file.length;
+                            break;
+                        }
                     }
                 }
+                if (videoFile) break;
             }
         }
 
