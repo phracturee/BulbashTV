@@ -1429,8 +1429,9 @@
                         </div>
                     </div>
                 `;
-                
-                // Start polling for status updates
+
+                // Reset playing state and start polling for status updates
+                window.wasPlaying = false;
                 if (!window.seriesStatusInterval) {
                     window.seriesStatusInterval = setInterval(() => pollSeriesStatus(), 2000);
                 }
@@ -1443,7 +1444,17 @@
             .then(r => r.json())
             .then(data => {
                 console.log('[Status]', data);
+
+                // Track playing state to detect when MPV closes
+                if (window.wasPlaying === true && (data.status === 'stopped' || data.playing === false)) {
+                    console.log('[Status] MPV closed, closing window');
+                    hideLoadingOverlay();
+                    return;
+                }
                 
+                // Update playing state
+                window.wasPlaying = data.playing;
+
                 // Cap progress at 100%
                 const cappedProgress = data.progress !== undefined ? Math.min(data.progress, 100) : 0;
                 const progressText = cappedProgress.toFixed(1) + '%';
@@ -1451,7 +1462,7 @@
                 const peersText = data.peers || 0;
                 const downloadedText = data.downloaded || '0 MB';
                 const filename = data.filename || '';
-                
+
                 // Update UI elements
                 const progressEl = document.getElementById('streamProgress');
                 const progressPercentEl = document.getElementById('streamProgressPercent');
@@ -1460,7 +1471,7 @@
                 const downloadedEl = document.getElementById('streamDownloaded');
                 const peersEl = document.getElementById('streamPeers');
                 const filenameEl = document.getElementById('streamFilename');
-                
+
                 if (progressEl) progressEl.textContent = progressText;
                 if (progressPercentEl) progressPercentEl.textContent = progressText;
                 if (progressBarEl) progressBarEl.style.width = cappedProgress + '%';
