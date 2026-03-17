@@ -1457,6 +1457,23 @@
                                     <p id="streamDownloaded" style="color: var(--text-color); font-size: 1.1rem; font-weight: 600;">0 MB</p>
                                 </div>
                             </div>
+                            
+                            <!-- Просмотрено (всегда отображается) -->
+                            <div id="playbackProgress" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <div style="margin-bottom: 15px;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                        <span style="color: #888; font-size: 0.85rem;">Просмотрено</span>
+                                        <span id="avPercent" style="color: var(--accent); font-size: 0.85rem; font-weight: 600;">0%</span>
+                                    </div>
+                                    <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 8px; overflow: hidden;">
+                                        <div id="playbackProgressBar" style="background: linear-gradient(90deg, #4CAF50, #8BC34A); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span id="avCurrent" style="color: var(--text-color); font-size: 1.1rem; font-weight: 600;">0:00:00</span>
+                                    <span style="color: #888; font-size: 0.9rem;">/ <span id="avTotal">0:00:00</span></span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1533,41 +1550,16 @@
                 if (filenameEl && filename) filenameEl.textContent = filename;
                 if (infoPeersEl) infoPeersEl.textContent = peersCount;
                 
-                // Update or create playback progress section inside stats block
-                let playbackEl = document.getElementById('playbackProgress');
-                if (avPercent > 0 || avCurrent) {
-                    if (!playbackEl) {
-                        // Create playback progress section inside stats block
-                        const statsHeader = document.querySelector('.torrent-info-detailed > div:last-child h4');
-                        if (statsHeader) {
-                            playbackEl = document.createElement('div');
-                            playbackEl.id = 'playbackProgress';
-                            playbackEl.style.cssText = 'margin-top: 20px; padding-top: 20px;';
-                            statsHeader.parentElement.appendChild(playbackEl);
-                        }
-                    }
-                    
-                    if (playbackEl) {
-                        playbackEl.innerHTML = `
-                            <div style="margin-bottom: 15px;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                    <span style="color: #888; font-size: 0.85rem;">Просмотрено</span>
-                                    <span style="color: var(--accent); font-size: 0.85rem; font-weight: 600;">${avPercent}%</span>
-                                </div>
-                                <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 8px; overflow: hidden;">
-                                    <div id="playbackProgressBar" style="background: linear-gradient(90deg, #4CAF50, #8BC34A); height: 100%; width: ${avPercent}%; transition: width 0.3s;"></div>
-                                </div>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="color: var(--text-color); font-size: 1.1rem; font-weight: 600;">${avCurrent || '0:00:00'}</span>
-                                <span style="color: #888; font-size: 0.9rem;">/ ${avTotal || '0:00:00'}</span>
-                            </div>
-                        `;
-                    }
-                } else if (playbackEl) {
-                    // Remove playback section if no data
-                    playbackEl.remove();
-                }
+                // Update playback progress (always visible)
+                const avPercentEl = document.getElementById('avPercent');
+                const avCurrentEl = document.getElementById('avCurrent');
+                const avTotalEl = document.getElementById('avTotal');
+                const playbackProgressBarEl = document.getElementById('playbackProgressBar');
+                
+                if (avPercentEl) avPercentEl.textContent = avPercent + '%';
+                if (avCurrentEl) avCurrentEl.textContent = avCurrent || '0:00:00';
+                if (avTotalEl) avTotalEl.textContent = avTotal || '0:00:00';
+                if (playbackProgressBarEl) playbackProgressBarEl.style.width = avPercent + '%';
             })
             .catch(err => {
                 console.log('[Status] Poll error:', err);
