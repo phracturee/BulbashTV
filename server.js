@@ -58,17 +58,6 @@ let videoFile = null;
 let fileIndex = 0;
 let serverStarted = false;
 
-// Timeout for metadata (30 seconds)
-const metadataTimeout = setTimeout(() => {
-    console.error('❌ Таймаут получения метаданных (30с)');
-    console.error('💡 Возможные причины:');
-    console.error('   - Нет сидов (0 seeders)');
-    console.error('   - Торрент мёртвый');
-    console.error('   - Проблемы с подключением');
-    client.destroy();
-    process.exit(1);
-}, 30000);
-
 torrent.on('metadata', () => {
     clearTimeout(metadataTimeout);
     console.log(`\n✅ Метаданные получены`);
@@ -220,8 +209,26 @@ torrent.on('metadata', () => {
 
 torrent.on('error', (err) => {
     console.error(`\n❌ Ошибка торрента: ${err.message}`);
+    console.error('💡 Возможные причины:');
+    console.error('   - Нет сидов (0 seeders)');
+    console.error('   - Торрент мёртвый');
+    console.error('   - Проблемы с подключением');
     process.exit(1);
 });
+
+// Timeout for metadata (60 seconds)
+const metadataTimeout = setTimeout(() => {
+    if (!videoFile) {
+        console.error('\n⏱️ Таймаут получения метаданных (60с)');
+        console.error('💡 Торрент не может получить метаданные');
+        console.error('💡 Проверьте:');
+        console.error('   - Наличие сидов (seeders)');
+        console.error('   - Подключение к интернету');
+        console.error('   - Работает ли трекер');
+        client.destroy();
+        process.exit(1);
+    }
+}, 60000);
 
 function startStreaming() {
     if (serverStarted || !videoFile) return;
@@ -365,6 +372,7 @@ function launchMpv(streamUrl, server) {
 
 function cleanup() {
     console.log('\n🧹 Остановка...');
+    clearTimeout(metadataTimeout);
     client.destroy(() => {
         console.log('✅ WebTorrent остановлен');
         process.exit(0);
