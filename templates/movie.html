@@ -1060,7 +1060,9 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    // Update heart icon immediately
+                    showNotification(`Добавлено в "${data.folder_name}"!`, 'success');
+                    
+                    // Update heart icon on page
                     const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
                     if (btn) {
                         btn.classList.add('active');
@@ -1070,30 +1072,11 @@
                             icon.classList.add('fas');
                         }
                     }
-                    showNotification(`Добавлено в "${data.folder_name}"!`, 'success');
-                    closeFolderModal();
                     
-                    // Update modal to reflect new state without reload
+                    // Immediately refresh the modal to show updated state
                     setTimeout(() => {
-                        fetch(`/api/favorites/check/${itemId}`)
-                        .then(r => r.json())
-                        .then(checkData => {
-                            const currentFolders = checkData.folders || [];
-                            const isFavorite = currentFolders.length > 0 && !currentFolders.includes('watched');
-                            
-                            const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
-                            if (btn) {
-                                if (isFavorite) {
-                                    btn.classList.add('active');
-                                    const icon = btn.querySelector('i');
-                                    if (icon) {
-                                        icon.classList.remove('far');
-                                        icon.classList.add('fas');
-                                    }
-                                }
-                            }
-                        });
-                    }, 500);
+                        showFolderSelectionModal(itemId);
+                    }, 300);
                 } else {
                     showNotification(data.message || 'Ошибка', 'error');
                 }
@@ -1109,36 +1092,12 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    // Check if still in any favorites
-                    fetch(`/api/favorites/check/${itemId}`)
-                    .then(r => r.json())
-                    .then(checkData => {
-                        const currentFolders = checkData.folders || [];
-                        const isFavorite = currentFolders.length > 0 && !currentFolders.includes('watched');
-                        
-                        const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
-                        if (btn) {
-                            if (isFavorite) {
-                                btn.classList.add('active');
-                                const icon = btn.querySelector('i');
-                                if (icon) {
-                                    icon.classList.remove('far');
-                                    icon.classList.add('fas');
-                                }
-                            } else {
-                                btn.classList.remove('active');
-                                const icon = btn.querySelector('i');
-                                if (icon) {
-                                    icon.classList.remove('fas');
-                                    icon.classList.add('far');
-                                }
-                            }
-                        }
-                        showNotification('Удалено из папки', 'info');
-                        closeFolderModal();
-                        // Reload modal to update folder list
-                        setTimeout(() => showFolderSelectionModal(itemId), 500);
-                    });
+                    showNotification('Удалено из папки', 'info');
+                    
+                    // Immediately refresh the modal to show updated state
+                    setTimeout(() => {
+                        showFolderSelectionModal(itemId);
+                    }, 300);
                 }
             })
             .catch(err => {
