@@ -977,11 +977,11 @@
                         
                         const isInFolder = currentFolders.includes(folder.id);
                         foldersHtml += `
-                            <div class="folder-option ${isInFolder ? 'in-folder' : ''}" onclick="${isInFolder ? `removeFromFolder('${folder.id}', ${itemId})` : `addToFolder('${folder.id}', ${itemId})`}">
-                                <i class="fas fa-folder${isInFolder ? '' : '-open'}"></i>
-                                <div class="folder-option-info">
-                                    <h4>${folder.name}</h4>
-                                    <span>${folder.item_count} элементов</span>
+                            <div class="folder-option ${isInFolder ? 'in-folder' : ''}" onclick="${isInFolder ? `removeFromFolder('${folder.id}', ${itemId})` : `addToFolder('${folder.id}', ${itemId})`}" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 1px solid ${isInFolder ? 'var(--accent)' : 'transparent'};">
+                                <i class="fas fa-folder${isInFolder ? '' : '-open'}" style="color: var(--accent); font-size: 1.5rem;"></i>
+                                <div class="folder-option-info" style="flex: 1;">
+                                    <h4 style="margin: 0 0 5px 0; color: var(--text-color);">${folder.name}</h4>
+                                    <span style="color: #888; font-size: 0.85rem;">${folder.item_count} элементов</span>
                                 </div>
                                 ${isInFolder ? '<i class="fas fa-check" style="color: var(--accent);"></i>' : ''}
                             </div>
@@ -991,11 +991,11 @@
                     // Add "Watched" button before "Create new folder" (like on homepage)
                     const isWatched = currentFolders.includes('watched');
                     foldersHtml += `
-                        <div class="folder-option watched-option ${isWatched ? 'in-folder' : ''}" onclick="toggleWatched(${itemId}); closeFolderModal();">
-                            <i class="fas fa-eye"></i>
-                            <div class="folder-option-info">
-                                <h4>Просмотренное</h4>
-                                <span>${isWatched ? 'Отметить как непросмотренное' : 'Отметить как просмотренное'}</span>
+                        <div class="folder-option watched-option ${isWatched ? 'in-folder' : ''}" onclick="toggleWatched(${itemId}); closeFolderModal();" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(76,175,80,0.1); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border-left: 3px solid #4CAF50;">
+                            <i class="fas fa-eye" style="color: #4CAF50; font-size: 1.5rem;"></i>
+                            <div class="folder-option-info" style="flex: 1;">
+                                <h4 style="margin: 0 0 5px 0; color: var(--text-color);">Просмотренное</h4>
+                                <span style="color: #888; font-size: 0.85rem;">${isWatched ? 'Отметить как непросмотренное' : 'Отметить как просмотренное'}</span>
                             </div>
                             ${isWatched ? '<i class="fas fa-check" style="color: #4CAF50;"></i>' : ''}
                         </div>
@@ -1003,22 +1003,22 @@
 
                     // Add "Create new folder" option at the end
                     foldersHtml += `
-                        <div class="folder-option create-new-folder" onclick="createFolderAndAdd(${itemId})">
-                            <i class="fas fa-plus-circle"></i>
-                            <div class="folder-option-info">
-                                <h4>Создать новую папку</h4>
+                        <div class="folder-option create-new-folder" onclick="createFolderAndAdd(${itemId})" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(218,165,32,0.05); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 2px dashed var(--accent);">
+                            <i class="fas fa-plus-circle" style="color: var(--accent); font-size: 1.5rem;"></i>
+                            <div class="folder-option-info" style="flex: 1;">
+                                <h4 style="margin: 0 0 5px 0; color: var(--text-color);">Создать новую папку</h4>
                             </div>
                         </div>
                     `;
 
                     modal.innerHTML = `
-                        <div class="modal-content">
-                            <h3>Добавить в папку</h3>
+                        <div class="modal-content" style="background: #000000; border: 2px solid var(--accent); border-radius: 15px; padding: 30px;">
+                            <h3 style="color: var(--accent); margin-bottom: 20px; font-size: 1.3rem;"><i class="fas fa-folder-plus"></i> Добавить в папку</h3>
                             <div class="folder-list">
                                 ${foldersHtml}
                             </div>
-                            <div class="modal-buttons">
-                                <button onclick="closeFolderModal()" class="btn-secondary">Отмена</button>
+                            <div class="modal-buttons" style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
+                                <button onclick="closeFolderModal()" class="btn-secondary" style="background: rgba(255,255,255,0.1); color: var(--text-color); border: 1px solid rgba(255,255,255,0.2); padding: 10px 24px; border-radius: 20px; cursor: pointer; transition: all 0.3s;">Отмена</button>
                             </div>
                         </div>
                     `;
