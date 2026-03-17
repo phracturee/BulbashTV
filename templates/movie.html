@@ -975,7 +975,16 @@
 
                     const isInFolder = currentFolders.includes(folder.id);
                     foldersHtml += `
-                        <div class="folder-option ${isInFolder ? 'in-folder' : ''}" data-folder-id="${folder.id}" data-item-id="${itemId}" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 1px solid ${isInFolder ? 'var(--accent)' : 'transparent'};">
+                        <div class="folder-option ${isInFolder ? 'in-folder' : ''}" 
+                             data-folder-id="${folder.id}" 
+                             data-item-id="${itemId}"
+                             data-item-title="{{ item.title|replace('"', '&quot;') }}"
+                             data-item-media-type="{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}"
+                             data-item-poster-path="{{ item.poster_path }}"
+                             data-item-vote-average="{{ item.vote_average }}"
+                             data-item-release-date="{{ item.release_date or item.year }}"
+                             data-item-overview="{{ item.overview|replace('"', '&quot;') }}"
+                             style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 1px solid ${isInFolder ? 'var(--accent)' : 'transparent'};">
                             <i class="fas fa-folder${isInFolder ? '' : '-open'}" style="color: var(--accent); font-size: 1.5rem;"></i>
                             <div class="folder-option-info" style="flex: 1;">
                                 <h4 style="margin: 0 0 5px 0; color: var(--text-color);">${folder.name}</h4>
@@ -1126,59 +1135,88 @@
             event.stopPropagation();
             
             const option = event.currentTarget;
-            const isInFolder = option.classList.contains('in-folder');
             
-            console.log('[handleFolderOptionClick] folderId:', folderId, 'itemId:', itemId, 'isInFolder:', isInFolder);
+            console.log('[handleFolderOptionClick] folderId:', folderId, 'itemId:', itemId, 'type:', typeof itemId);
             
-            const item = {
-                id: itemId,
-                title: "{{ item.title }}",
-                media_type: "{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}",
-                poster_path: "{{ item.poster_path }}",
-                vote_average: "{{ item.vote_average }}",
-                release_date: "{{ item.release_date or item.year }}",
-                overview: "{{ item.overview }}"
-            };
+            // Преобразуем itemId в число если это строка
+            const itemIdNum = parseInt(itemId);
             
-            if (isInFolder) {
-                // Удаляем из папки
-                console.log('[handleFolderOptionClick] Removing from folder:', folderId);
-                fetch(`/api/favorites/remove/${itemId}?folder_id=${folderId}`, { method: 'DELETE' })
-                .then(r => r.json())
-                .then(data => {
-                    console.log('[handleFolderOptionClick] Remove response:', data);
-                    if (data.success) {
-                        showNotification('Удалено из папки', 'info');
-                        updateFolderModalUI(itemId);
-                    }
-                })
-                .catch(err => {
-                    console.error('[handleFolderOptionClick] Error removing:', err);
-                    showNotification('Ошибка при удалении', 'error');
-                });
-            } else {
-                // Добавляем в папку
-                console.log('[handleFolderOptionClick] Adding to folder:', folderId);
-                fetch('/api/favorites/add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({...item, folder_id: folderId})
-                })
-                .then(r => r.json())
-                .then(data => {
-                    console.log('[handleFolderOptionClick] Add response:', data);
-                    if (data.success) {
-                        showNotification(`Добавлено в "${data.folder_name}"!`, 'success');
-                        updateFolderModalUI(itemId);
-                    } else {
-                        showNotification(data.message || 'Ошибка', 'error');
-                    }
-                })
-                .catch(err => {
-                    console.error('[handleFolderOptionClick] Error adding:', err);
-                    showNotification('Ошибка при добавлении', 'error');
-                });
-            }
+            // Сначала проверяем актуальное состояние через API (с timestamp для обхода кэша)
+            fetch(`/api/favorites/check/${itemIdNum}?t=${Date.now()}`)
+            .then(r => r.json())
+            .then(checkData => {
+                const currentFolders = checkData.folders || [];
+                const isInFolder = currentFolders.includes(folderId);
+                
+                console.log('[handleFolderOptionClick] check response:', checkData);
+                console.log('[handleFolderOptionClick] isInFolder:', isInFolder, 'currentFolders:', currentFolders);
+                
+                // Получаем данные о фильме/сериале из глобальной переменной или data-атрибутов
+                const itemTitle = option.dataset.itemTitle || "{{ item.title }}";
+                const itemMediaType = option.dataset.itemMediaType || "{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}";
+                const itemPosterPath = option.dataset.itemPosterPath || "{{ item.poster_path }}";
+                const itemVoteAverage = option.dataset.itemVoteAverage || "{{ item.vote_average }}";
+                const itemReleaseDate = option.dataset.itemReleaseDate || "{{ item.release_date or item.year }}";
+                const itemOverview = option.dataset.itemOverview || "{{ item.overview }}";
+                
+                const item = {
+                    id: itemIdNum,
+                    title: itemTitle,
+                    media_type: itemMediaType,
+                    poster_path: itemPosterPath,
+                    vote_average: itemVoteAverage,
+                    release_date: itemReleaseDate,
+                    overview: itemOverview
+                };
+                
+                console.log('[handleFolderOptionClick] item data:', item);
+                
+                if (isInFolder) {
+                    // Удаляем из папки
+                    console.log('[handleFolderOptionClick] Removing from folder:', folderId);
+                    fetch(`/api/favorites/remove/${itemIdNum}?folder_id=${folderId}`, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(data => {
+                        console.log('[handleFolderOptionClick] Remove response:', data);
+                        if (data.success) {
+                            showNotification('Удалено из папки', 'info');
+                            updateFolderModalUI(itemIdNum);
+                        } else {
+                            showNotification(data.message || 'Ошибка', 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('[handleFolderOptionClick] Error removing:', err);
+                        showNotification('Ошибка при удалении', 'error');
+                    });
+                } else {
+                    // Добавляем в папку
+                    console.log('[handleFolderOptionClick] Adding to folder:', folderId);
+                    fetch('/api/favorites/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({...item, folder_id: folderId})
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        console.log('[handleFolderOptionClick] Add response:', data);
+                        if (data.success) {
+                            showNotification(`Добавлено в "${data.folder_name}"!`, 'success');
+                            updateFolderModalUI(itemIdNum);
+                        } else {
+                            showNotification(data.message || 'Ошибка', 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('[handleFolderOptionClick] Error adding:', err);
+                        showNotification('Ошибка при добавлении', 'error');
+                    });
+                }
+            })
+            .catch(err => {
+                console.error('[handleFolderOptionClick] Error checking status:', err);
+                showNotification('Ошибка проверки статуса', 'error');
+            });
         }
 
         function addToFolder(folderId, itemId) {
