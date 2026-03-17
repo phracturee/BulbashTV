@@ -1081,20 +1081,18 @@
             const seasonPadded = season < 10 ? `0${season}` : `${season}`;
             const episodePadded = episode < 10 ? `0${episode}` : `${episode}`;
             const episodePattern = `S${seasonPadded}E${episodePadded}`;
-            
+
             console.log(`\n${'='.repeat(60)}`);
             console.log(`[TV] ========== START STREAMING ==========`);
             console.log(`[TV] Looking for file pattern: ${episodePattern}`);
             console.log(`[TV] Magnet: ${torrent.magnet.substring(0, 50)}...`);
             console.log(`${'='.repeat(60)}\n`);
-            
+
             showNotification(`Запуск серии ${episodePattern}...`, 'info');
-            updateLoadingOverlay('streaming', {pattern: episodePattern, torrent: torrent});
             
-            // Start polling for status
-            window.seriesStreamingStatus = null;
-            window.seriesStatusInterval = setInterval(() => pollSeriesStatus(torrent, episodePattern), 2000);
-            
+            // Update overlay to streaming stage
+            updateLoadingOverlay('streaming', { pattern: episodePattern, torrent: torrent });
+
             fetch('/api/torrent/start', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1110,10 +1108,9 @@
                 console.log(`\n${'='.repeat(60)}`);
                 console.log(`[TV] Start response:`, data);
                 console.log(`${'='.repeat(60)}\n`);
-                
+
                 if (data.success) {
                     console.log(`[TV] Серия запущена! Video URL: ${data.video_url}`);
-                    // Streaming started - no status bar shown
                 } else {
                     console.error(`[TV] Ошибка запуска:`, data.message);
                     showNotification(data.message || 'Ошибка запуска', 'error');
@@ -1270,9 +1267,14 @@
         
         // Close series player
         function closeSeriesPlayer() {
-            const overlay = document.getElementById('seriesPlayerOverlay');
+            const overlay = document.getElementById('seriesLoadingOverlay');
             if (overlay) {
                 overlay.remove();
+            }
+            // Clear status polling interval
+            if (window.seriesStatusInterval) {
+                clearInterval(window.seriesStatusInterval);
+                window.seriesStatusInterval = null;
             }
         }
         
@@ -1347,7 +1349,7 @@
         function updateLoadingOverlay(stage, data) {
             const content = document.getElementById('seriesLoadingContent');
             if (!content) return;
-            
+
             if (stage === 'torrent') {
                 const torrent = data;
                 content.innerHTML = `
@@ -1357,8 +1359,8 @@
                         </h3>
                         <div style="background: #000000; padding: 25px; border-radius: 15px; margin-bottom: 25px; border: 1px solid rgba(218,165,32,0.3);">
                             <p style="margin-bottom: 15px; color: #888; font-size: 0.9rem;"><strong>Название раздачи:</strong></p>
-                            <p style="color: var(--text-color); margin-bottom: 25px; line-height: 1.6;">${escapeHtml(torrent.title)}</p>
-                            
+                            <p style="color: var(--text-color); margin-bottom: 25px; line-height: 1.6; word-break: break-word;">${escapeHtml(torrent.title)}</p>
+
                             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
                                 <div>
                                     <p style="color: #888; font-size: 0.85rem; margin-bottom: 8px;"><i class="fas fa-satellite-dish"></i> Трекер</p>
@@ -1367,10 +1369,6 @@
                                 <div>
                                     <p style="color: #888; font-size: 0.85rem; margin-bottom: 8px;"><i class="fas fa-film"></i> Качество</p>
                                     <p style="color: var(--accent); font-weight: 600;">${torrent.quality}</p>
-                                </div>
-                                <div>
-                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 8px;"><i class="fas fa-arrow-up"></i> Сиды</p>
-                                    <p style="color: #4CAF50; font-weight: 600;">${torrent.seeds || 0}</p>
                                 </div>
                                 <div>
                                     <p style="color: #888; font-size: 0.85rem; margin-bottom: 8px;"><i class="fas fa-hdd"></i> Размер</p>
@@ -1386,24 +1384,100 @@
                     </div>
                 `;
             } else if (stage === 'streaming') {
+                const { pattern, torrent } = data;
                 content.innerHTML = `
                     <div class="torrent-info-detailed">
                         <h3 style="color: #4CAF50; margin-bottom: 20px; text-align: center;">
-                            <i class="fas fa-play-circle"></i> Запуск...
+                            <i class="fas fa-play-circle"></i> Воспроизведение
                         </h3>
-                        <div style="background: #000000; padding: 25px; border-radius: 15px; margin-bottom: 25px; border: 1px solid rgba(218,165,32,0.3);">
-                            <p style="margin-bottom: 15px; color: #888; font-size: 0.9rem;"><strong>Файл серии:</strong></p>
-                            <p style="color: var(--accent); font-size: 1.5rem; text-align: center; margin-bottom: 20px; font-weight: 700;">${data.pattern}</p>
-                            <p style="color: #888; text-align: center; font-size: 0.9rem;"><i class="fas fa-info-circle"></i> Формат: SXXEYY</p>
+                        
+                        <div style="background: #000000; padding: 25px; border-radius: 15px; margin-bottom: 20px; border: 1px solid rgba(218,165,32,0.3);">
+                            <p style="margin-bottom: 15px; color: #888; font-size: 0.9rem;"><strong>Раздача:</strong></p>
+                            <p style="color: var(--text-color); line-height: 1.5; word-break: break-word; margin-bottom: 20px;">${escapeHtml(torrent.title)}</p>
+                            
+                            <p style="margin-bottom: 10px; color: #888; font-size: 0.9rem;"><strong>Воспроизводимый файл:</strong></p>
+                            <p id="streamFilename" style="color: var(--accent); font-size: 1.1rem; margin-bottom: 20px;">${pattern}</p>
                         </div>
-                        <div class="search-loading" style="padding: 30px 20px;">
-                            <i class="fas fa-spinner fa-spin" style="font-size: 2.5rem; margin-bottom: 15px;"></i>
-                            <h3 style="margin-bottom: 10px;">Буферизация...</h3>
-                            <p style="color: #888;">Загрузка данных...</p>
+                        
+                        <div style="background: #000000; padding: 20px; border-radius: 15px; border: 1px solid rgba(218,165,32,0.3);">
+                            <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 1rem;">
+                                <i class="fas fa-chart-bar"></i> Статистика
+                            </h4>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                                <div>
+                                    <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Прогресс</p>
+                                    <p id="streamProgress" style="color: #4CAF50; font-size: 1.2rem; font-weight: 600;">0%</p>
+                                </div>
+                                <div>
+                                    <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Скорость</p>
+                                    <p id="streamSpeed" style="color: var(--accent); font-size: 1rem;">0 MB/s</p>
+                                </div>
+                                <div>
+                                    <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Скачано</p>
+                                    <p id="streamDownloaded" style="color: var(--text-color); font-size: 1rem;">0 MB</p>
+                                </div>
+                                <div>
+                                    <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Пиры</p>
+                                    <p id="streamPeers" style="color: var(--text-color); font-size: 1rem;">0</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Progress bar -->
+                            <div style="margin-top: 15px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <span style="color: #888; font-size: 0.8rem;">Загрузка торрента</span>
+                                    <span id="streamProgressPercent" style="color: var(--accent); font-size: 0.8rem;">0%</span>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 8px; overflow: hidden;">
+                                    <div id="streamProgressBar" style="background: linear-gradient(90deg, var(--accent), #ffb700); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
+                
+                // Start polling for status updates
+                if (!window.seriesStatusInterval) {
+                    window.seriesStatusInterval = setInterval(() => pollSeriesStatus(), 2000);
+                }
             }
+        }
+        
+        // Poll series streaming status
+        function pollSeriesStatus() {
+            fetch('/api/torrent/status')
+            .then(r => r.json())
+            .then(data => {
+                console.log('[Status]', data);
+                
+                // Cap progress at 100%
+                const cappedProgress = data.progress !== undefined ? Math.min(data.progress, 100) : 0;
+                const progressText = cappedProgress.toFixed(1) + '%';
+                const speedText = data.download_speed || data.speed || '0 MB/s';
+                const peersText = data.peers || 0;
+                const downloadedText = data.downloaded || '0 MB';
+                const filename = data.filename || '';
+                
+                // Update UI elements
+                const progressEl = document.getElementById('streamProgress');
+                const progressPercentEl = document.getElementById('streamProgressPercent');
+                const progressBarEl = document.getElementById('streamProgressBar');
+                const speedEl = document.getElementById('streamSpeed');
+                const downloadedEl = document.getElementById('streamDownloaded');
+                const peersEl = document.getElementById('streamPeers');
+                const filenameEl = document.getElementById('streamFilename');
+                
+                if (progressEl) progressEl.textContent = progressText;
+                if (progressPercentEl) progressPercentEl.textContent = progressText;
+                if (progressBarEl) progressBarEl.style.width = cappedProgress + '%';
+                if (speedEl) speedEl.textContent = speedText;
+                if (downloadedEl) downloadedEl.textContent = downloadedText;
+                if (peersEl) peersEl.textContent = peersText;
+                if (filenameEl && filename) filenameEl.textContent = filename;
+            })
+            .catch(err => {
+                console.log('[Status] Poll error:', err);
+            });
         }
         
         // Hide loading overlay
