@@ -981,7 +981,7 @@
                              data-item-id="${itemId}"
                              data-item-title="{{ item.title|replace('"', '&quot;') }}"
                              data-item-media-type="{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}"
-                             data-item-poster-path="${originalPosterPath}"
+                             data-item-poster-path="{{ item.poster_path_original }}"
                              data-item-vote-average="{{ item.vote_average }}"
                              data-item-release-date="{{ item.release_date or item.year }}"
                              data-item-overview="{{ item.overview|replace('"', '&quot;') }}"
