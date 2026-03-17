@@ -1020,6 +1020,10 @@
                         /россия\s+1/i,
                         /эфир\s+от/i,
                         /выпуск\s+\d+/i,
+                        // Exclude complete series collections (e.g., "Сезон: 1-15")
+                        /сезон:\s*\d+\s*-\s*\d+/i,
+                        /сезон\s+\d+\s*-\s*\d+/i,
+                        /seasons?\s+\d+\s*-\s*\d+/i,
                     ];
 
                     // Filter results
@@ -1036,11 +1040,12 @@
 
                     console.log(`[TV] Filtered ${data.results.length} -> ${filteredResults.length} results`);
 
-                    // Find the torrent with matching season number
+                    // Find the torrent with matching season number (exact match, not range)
                     const torrent = filteredResults.find(r => {
                         const titleLower = r.title.toLowerCase();
-                        // Check if season number matches exactly (not 2 for 22)
-                        const seasonPattern = new RegExp(`сезон[:\\s]*${season}\\b`, 'i');
+                        // Check if season number matches exactly (not 2 for 22, not 1-15)
+                        // Match "Сезон: 1" but not "Сезон: 1-15"
+                        const seasonPattern = new RegExp(`сезон[:\\s]*${season}\\b(?![-\\s]*\\d)`, 'i');
                         return seasonPattern.test(titleLower);
                     }) || (filteredResults.length > 0 ? filteredResults[0] : data.results[0]);
 

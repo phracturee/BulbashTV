@@ -426,16 +426,30 @@ class TorrentSearcher:
                 print(f"[Filter] Excluded by pattern '{pattern}': {title}")
                 return False
 
+        # Exclude complete series collections (e.g., "Сезон: 1-15" or "Seasons 1-5")
+        # We want exact season match, not all-in-one collections
+        collection_patterns = [
+            r'сезон:\s*\d+\s*-\s*\d+',  # Сезон: 1-15
+            r'сезон\s+\d+\s*-\s*\d+',   # Сезон 1-15
+            r'seasons?\s+\d+\s*-\s*\d+', # Seasons 1-5
+            r'сезон\s+1\s*-\s*\d+',      # Сезон 1-X (all seasons)
+        ]
+        
+        for pattern in collection_patterns:
+            if re.search(pattern, title_lower):
+                print(f"[Filter] Excluded collection: {title}")
+                return False
+
         # Check season number - must match exactly (not 2 for 22)
         # Look for "Сезон: X" or "Season X" pattern
         season_patterns = [
-            rf'сезон:\s*{season}\b',  # Сезон: 2
-            rf'сезон\s+{season}\b',   # Сезон 2
-            rf'season\s*{season}\b',   # Season 2
-            rf's{season:02d}\b',       # S02 or S2
-            rf's{season}\b',           # S2
-            rf's\.?{season:02d}\b',    # S.02 or S.2
-            rf's\.?{season}\b',        # S.2
+            rf'сезон:\s*{season}\b(?![-\s]*\d)',  # Сезон: 2 (not followed by -X)
+            rf'сезон\s+{season}\b(?![-\s]*\d)',   # Сезон 2 (not followed by -X)
+            rf'season\s*{season}\b(?![-\s]*\d)',  # Season 2 (not followed by -X)
+            rf's{season:02d}\b',                  # S02 or S2
+            rf's{season}\b',                      # S2
+            rf's\.?{season:02d}\b',               # S.02 or S.2
+            rf's\.?{season}\b',                   # S.2
         ]
 
         season_found = False
