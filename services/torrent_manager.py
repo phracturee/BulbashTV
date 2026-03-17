@@ -656,7 +656,6 @@ class TorrentManager:
                         content_after_av = log_content[last_av_pos:]
                         if "Exiting... (Quit)" in content_after_av or "MPV закрыт" in content_after_av:
                             mpv_exited = True
-                            print("[STATUS] MPV exited after last AV position")
             except:
                 pass
 
@@ -666,9 +665,8 @@ class TorrentManager:
             node_running = result.returncode == 0
             mpv_result = subprocess.run(["pgrep", "-f", "mpv"], capture_output=True, text=True)
             mpv_running = mpv_result.returncode == 0
-            
+
             processes_running = node_running or mpv_running
-            print(f"[STATUS] Processes: node={node_running}, mpv={mpv_running}")
         except:
             processes_running = False
 
@@ -677,22 +675,17 @@ class TorrentManager:
             # MPV explicitly exited
             status["status"] = "stopped"
             status["playing"] = False
-            print("[STATUS] MPV exited, setting stopped")
         elif processes_running:
             # Processes are running, consider it playing (even if no data yet)
             status["status"] = "playing"
             status["playing"] = True
-            print("[STATUS] Processes running, setting playing")
         elif status.get("av_line") or status.get("download_speed"):
             # Processes not found but we have recent data
             status["status"] = "playing"
             status["playing"] = True
-            print("[STATUS] Has data but no processes, setting playing")
         else:
             # No processes, no data
             status["status"] = "stopped"
             status["playing"] = False
-            print("[STATUS] No processes and no data, setting stopped")
 
-        print(f"[STATUS] {status}")
         return status
