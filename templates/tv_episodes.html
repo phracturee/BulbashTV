@@ -1401,6 +1401,11 @@
                                 <p style="color: var(--text-color); line-height: 1.5; word-break: break-word;">${escapeHtml(torrent.title)}</p>
                             </div>
                             
+                            <div style="margin-bottom: 20px;">
+                                <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Файл:</p>
+                                <p id="streamFilename" style="color: var(--accent); line-height: 1.5; word-break: break-word; font-size: 0.95rem;">${escapeHtml(torrent.title)} - Серия ${pattern.replace('S', 'S').replace('E', 'E')}</p>
+                            </div>
+                            
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                                 <div>
                                     <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Трекер</p>
@@ -1529,7 +1534,12 @@
                 if (speedEl) speedEl.textContent = speedText;
                 if (downloadedEl) downloadedEl.textContent = downloadedText;
                 if (peersEl) peersEl.textContent = peersText;
-                if (filenameEl && filename) filenameEl.textContent = filename;
+                
+                // Update filename from status
+                const filenameEl = document.getElementById('streamFilename');
+                if (filenameEl && filename) {
+                    filenameEl.textContent = filename;
+                }
                 
                 // Update or create playback progress section inside stats block
                 let playbackEl = document.getElementById('playbackProgress');
