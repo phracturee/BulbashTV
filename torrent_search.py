@@ -397,9 +397,25 @@ class TorrentSearcher:
         title_lower = title.lower()
         series_lower = series_name.lower()
 
-        # Check if series name matches (exact match, not partial)
-        if series_lower not in title_lower:
+        # Extract main title from torrent (before season info)
+        # Look for patterns like "Title / Season: X" or "Title [Year]"
+        title_before_season = re.split(r'\s*(?:сезон|season|серии|episodes?|выпуски?)\s*[:\s]?\d', title_lower)[0]
+        
+        # Check if series name matches in the main title part (not in genres/description)
+        # Also check full title for alternative name formats
+        if series_lower not in title_lower and series_lower not in title_before_season:
             return False
+        
+        # Additional check: series name should appear before year or in first 60% of title
+        # This helps exclude matches in genre lists
+        year_match = re.search(r'\[\s*(\d{4})', title_lower)
+        if year_match:
+            year_pos = year_match.start()
+            series_pos = title_lower.find(series_lower)
+            # Series name should appear before year or within first 60% of title
+            if series_pos > year_pos and series_pos > len(title_lower) * 0.6:
+                print(f"[Filter] Series name found too late (likely in genres): {title}")
+                return False
 
         # Exclude TV show titles that are not the target series
         # Common patterns for wrong matches
