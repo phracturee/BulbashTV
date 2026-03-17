@@ -310,12 +310,27 @@
             border-color: rgba(100, 100, 100, 0.5);
             cursor: not-allowed;
             opacity: 0.5;
+            position: relative;
         }
 
         .episode-item.aired-future:hover {
             background: rgba(100, 100, 100, 0.3);
             border-color: rgba(100, 100, 100, 0.5);
             transform: none;
+        }
+
+        .episode-item.aired-future::after {
+            content: 'Не вышла';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(244, 67, 54, 0.3);
+            color: #f44336;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid rgba(244, 67, 54, 0.5);
         }
 
         .episode-number-badge {
@@ -948,6 +963,9 @@
             const rating = episode.vote_average > 0 ? episode.vote_average : 'N/A';
             const runtime = episode.runtime ? `${episode.runtime} мин` : 'N/A';
             const overview = episode.overview || 'Описание отсутствует';
+            
+            // Check if episode has aired
+            const hasAired = episode.air_date && new Date(episode.air_date) <= new Date();
 
             const container = document.getElementById('episodeInfo');
             container.innerHTML = `
@@ -967,11 +985,22 @@
                     </div>
                 </div>
             `;
-            
-            // Show watch button
+
+            // Show watch button only if episode has aired
             const watchButtonContainer = document.getElementById('watchButtonContainer');
             if (watchButtonContainer) {
-                watchButtonContainer.style.display = 'block';
+                if (hasAired) {
+                    watchButtonContainer.style.display = 'block';
+                    watchButtonContainer.querySelector('button').disabled = false;
+                    watchButtonContainer.querySelector('button').style.opacity = '1';
+                    watchButtonContainer.querySelector('button').style.cursor = 'pointer';
+                } else {
+                    watchButtonContainer.style.display = 'block';
+                    watchButtonContainer.querySelector('button').disabled = true;
+                    watchButtonContainer.querySelector('button').style.opacity = '0.5';
+                    watchButtonContainer.querySelector('button').style.cursor = 'not-allowed';
+                    watchButtonContainer.querySelector('button').innerHTML = '<i class="fas fa-ban"></i> Серия ещё не вышла';
+                }
             }
         }
 
