@@ -534,8 +534,12 @@
             padding: 0;
         }
 
+        .torrent-info-detailed > div {
+            margin-bottom: 20px;
+        }
+
         .torrent-info-detailed h3 {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             margin-bottom: 15px;
         }
 
@@ -1290,7 +1294,7 @@
             overlay.innerHTML = `
                 <div class="torrents-container" style="max-width: 700px;">
                     <div class="torrents-header">
-                        <h2><i class="fas fa-play-circle"></i> Стриминг</h2>
+                        <h2><i class="fas fa-play-circle"></i> Окно стриминга (воспроизведения)</h2>
                         <button class="torrents-close" onclick="hideLoadingOverlay()">
                             <i class="fas fa-times"></i>
                         </button>
@@ -1381,50 +1385,79 @@
                 const { pattern, torrent } = data;
                 content.innerHTML = `
                     <div class="torrent-info-detailed">
-                        <div style="background: #000000; padding: 20px; border-radius: 15px; margin-bottom: 20px;">
-                            <p style="margin-bottom: 10px; color: #888; font-size: 0.85rem;">Раздача:</p>
-                            <p style="color: var(--text-color); line-height: 1.5; word-break: break-word; margin-bottom: 15px;">${escapeHtml(torrent.title)}</p>
+                        <!-- Блок 1: Информация о серии -->
+                        <div style="background: #000000; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid rgba(218,165,32,0.3);">
+                            <h3 style="color: var(--accent); margin-bottom: 15px; font-size: 1.1rem;">
+                                <i class="fas fa-info-circle"></i> Информация о серии
+                            </h3>
                             
-                            <p style="margin-bottom: 10px; color: #888; font-size: 0.85rem;">Файл:</p>
-                            <p id="streamFilename" style="color: var(--accent); font-size: 1rem; margin-bottom: 15px;">${pattern}</p>
+                            <div style="margin-bottom: 20px;">
+                                <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Серия:</p>
+                                <p style="color: var(--text-color); font-size: 1.1rem; font-weight: 600;">${pattern}</p>
+                            </div>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Раздача:</p>
+                                <p style="color: var(--text-color); line-height: 1.5; word-break: break-word;">${escapeHtml(torrent.title)}</p>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Трекер</p>
+                                    <p style="color: var(--accent); font-weight: 600;">${torrent.tracker}</p>
+                                </div>
+                                <div>
+                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Качество</p>
+                                    <p style="color: var(--accent); font-weight: 600;">${torrent.quality}</p>
+                                </div>
+                                <div>
+                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Сиды</p>
+                                    <p style="color: #4CAF50; font-weight: 600;">${torrent.seeds || 0}</p>
+                                </div>
+                                <div>
+                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Размер</p>
+                                    <p style="color: var(--text-color); font-weight: 600;">${torrent.size || 'Unknown'}</p>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div style="background: #000000; padding: 20px; border-radius: 15px;">
-                            <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 1rem;">
-                                <i class="fas fa-chart-bar"></i> Статистика
-                            </h4>
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-                                <div>
-                                    <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Прогресс</p>
-                                    <p id="streamProgress" style="color: #4CAF50; font-size: 1.2rem; font-weight: 600;">0%</p>
-                                </div>
-                                <div>
-                                    <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Скорость</p>
-                                    <p id="streamSpeed" style="color: var(--accent); font-size: 1rem;">0 MB/s</p>
-                                </div>
-                                <div>
-                                    <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Скачано</p>
-                                    <p id="streamDownloaded" style="color: var(--text-color); font-size: 1rem;">0 MB</p>
-                                </div>
-                                <div>
-                                    <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Пиры</p>
-                                    <p id="streamPeers" style="color: var(--text-color); font-size: 1rem;">0</p>
+                        <!-- Блок 2: Файл воспроизведения -->
+                        <div style="background: #000000; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid rgba(218,165,32,0.3);">
+                            <h3 style="color: #4CAF50; margin-bottom: 15px; font-size: 1.1rem;">
+                                <i class="fas fa-folder-open"></i> Файл воспроизведения
+                            </h3>
+                            <div id="fileList">
+                                <div class="search-loading">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <p>Загрузка списка файлов...</p>
                                 </div>
                             </div>
-                            
-                            <!-- Progress bar -->
-                            <div style="margin-top: 15px;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                    <span style="color: #888; font-size: 0.8rem;">Загрузка торрента</span>
-                                    <span id="streamProgressPercent" style="color: var(--accent); font-size: 0.8rem;">0%</span>
-                                </div>
-                                <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 8px; overflow: hidden;">
-                                    <div id="streamProgressBar" style="background: linear-gradient(90deg, var(--accent), #ffb700); height: 100%; width: 0%; transition: width 0.3s;"></div>
-                                </div>
-                            </div>
+                        </div>
+                        
+                        <!-- Кнопка: Открыть плеер -->
+                        <div style="text-align: center; margin-top: 25px;">
+                            <a href="#" id="openPlayerBtn" class="btn-load-more" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; padding: 12px 30px; background: rgba(218,165,32,0.2); color: var(--accent); border: 2px solid var(--accent); border-radius: 25px; font-weight: 600; transition: all 0.3s;">
+                                <i class="fas fa-external-link-alt"></i> Открыть плеер
+                            </a>
                         </div>
                     </div>
                 `;
+                
+                // Load file list
+                loadTorrentFilesForStreaming(torrent.magnet, pattern);
+                
+                // Setup open player button
+                setTimeout(() => {
+                    const btn = document.getElementById('openPlayerBtn');
+                    if (btn) {
+                        btn.href = `http://localhost:8888/0`;
+                        btn.target = '_blank';
+                        btn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            window.open(`http://localhost:8888/0`, '_blank');
+                        });
+                    }
+                }, 100);
 
                 // Reset playing state and start polling for status updates
                 window.wasPlaying = false;
@@ -1434,6 +1467,63 @@
             }
         }
         
+        // Load torrent file list for streaming window
+        function loadTorrentFilesForStreaming(magnet, episodePattern) {
+            const fileList = document.getElementById('fileList');
+            if (!fileList) return;
+
+            // Get torrent info hash from magnet
+            const hashMatch = magnet.match(/btih:([a-fA-F0-9]{40})/);
+            if (!hashMatch) {
+                fileList.innerHTML = '<p style="color: #888;">Ошибка: не удалось получить info hash</p>';
+                return;
+            }
+
+            const infoHash = hashMatch[1];
+
+            // Fetch file list from API
+            fetch(`/api/torrent/files?hash=${infoHash}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.files && data.files.length > 0) {
+                    let html = '<div style="max-height: 300px; overflow-y: auto;">';
+                    
+                    data.files.forEach((file, index) => {
+                        const fileName = file.path || file.name || 'Unknown';
+                        const fileSize = file.length ? (file.length / 1024 / 1024 / 1024).toFixed(2) + ' GB' : 'Unknown';
+                        
+                        // Check if this file matches the episode pattern
+                        const isMatching = fileName.toLowerCase().includes(episodePattern.toLowerCase().replace('s', '').replace('e', ''));
+                        const highlightClass = isMatching ? 'style="background: rgba(76,175,80,0.2); border-left: 3px solid #4CAF50;"' : '';
+                        const playIcon = isMatching ? '<span style="color: #4CAF50; margin-left: 10px;"><i class="fas fa-play-circle"></i></span>' : '';
+                        
+                        html += `
+                            <div style="padding: 12px 15px; margin-bottom: 8px; background: rgba(255,255,255,0.05); border-radius: 8px; ${highlightClass}">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <p style="color: var(--text-color); font-size: 0.9rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            ${index + 1}. ${escapeHtml(fileName)}
+                                        </p>
+                                        <p style="color: #888; font-size: 0.8rem; margin: 5px 0 0 0;">${fileSize}</p>
+                                    </div>
+                                    ${playIcon}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    fileList.innerHTML = html;
+                } else {
+                    fileList.innerHTML = '<p style="color: #888;">Файлы не найдены</p>';
+                }
+            })
+            .catch(err => {
+                console.error('[Files] Error:', err);
+                fileList.innerHTML = '<p style="color: #888;">Ошибка загрузки списка файлов</p>';
+            });
+        }
+
         // Poll series streaming status
         function pollSeriesStatus() {
             fetch('/api/torrent/status')
