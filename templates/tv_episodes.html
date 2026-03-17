@@ -818,6 +818,9 @@
                     const watchedIcon = isWatched ? 'fas fa-eye' : 'fas fa-eye-slash';
                     const watchedClass = isWatched ? 'watched' : '';
                     
+                    // Disable watched button for unaired episodes
+                    const watchedButtonDisabled = hasAired ? '' : 'disabled style="opacity: 0.3; cursor: not-allowed;"';
+
                     html += `
                         <div class="${episodeClass}" ${clickHandler ? 'onclick="' + clickHandler + '"' : ''} data-episode-index="${index}" data-season="${seasonNumber}">
                             <div class="episode-number-badge">E${episodeNum.toString().padStart(2, '0')}</div>
@@ -830,7 +833,7 @@
                                 </div>
                             </div>
                             <div class="episode-buttons">
-                                <button class="episode-btn episode-btn-watched ${watchedClass}" onclick="event.stopPropagation(); toggleWatchedEpisode(this, '${episodeKey}')" title="Отметить как просмотренное">
+                                <button class="episode-btn episode-btn-watched ${watchedClass}" ${watchedButtonDisabled} onclick="${hasAired ? 'event.stopPropagation(); toggleWatchedEpisode(this, \'' + episodeKey + '\')' : 'return false;'}" title="${hasAired ? 'Отметить как просмотренное' : 'Серия ещё не вышла'}">
                                     <i class="${watchedIcon}"></i>
                                 </button>
                             </div>
