@@ -940,6 +940,9 @@
         }
 
         function showFolderSelectionModal(itemId) {
+            // Сохраняем itemId для последующего использования
+            window.currentItemId = itemId;
+            
             // Always fetch fresh data from server
             Promise.all([
                 fetch('/api/favorites/folders').then(r => r.json()),
@@ -1014,7 +1017,7 @@
 
                 // Add "Create new folder" option at the end
                 foldersHtml += `
-                    <div class="folder-option create-new-folder" data-folder-id="new" data-item-id="${itemId}" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: #000000; border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 2px dashed var(--accent);">
+                    <div class="folder-option create-new-folder" data-folder-id="new" data-item-id="${itemId}" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: #000000; border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 2px dashed var(--accent);" onclick="showCreateFolderInput('${itemId}')">
                         <i class="fas fa-plus-circle" style="color: var(--accent); font-size: 1.5rem;"></i>
                         <div class="folder-option-info" style="flex: 1;">
                             <h4 style="margin: 0 0 5px 0; color: var(--text-color);">Создать новую папку</h4>
@@ -1236,36 +1239,67 @@
             console.log('removeFromFolder called, using handleFolderOptionClick instead');
         }
 
-        function createFolderAndAdd(itemId) {
-            // Create inline modal for folder name input
-            const existingInput = document.getElementById('inlineFolderInput');
-            if (existingInput) existingInput.remove();
-
-            const inputDiv = document.createElement('div');
-            inputDiv.id = 'inlineFolderInput';
-            inputDiv.className = 'inline-folder-input';
-            inputDiv.innerHTML = `
-                <div class="folder-input-content">
-                    <input type="text" id="newFolderNameInput" placeholder="Название папки" maxlength="50" autofocus>
-                    <div class="folder-input-buttons">
-                        <button onclick="cancelFolderInput()" class="btn-secondary">Отмена</button>
-                        <button onclick="submitNewFolder(${itemId})" class="btn-primary">Создать</button>
+        // Показать окно создания папки
+        function showCreateFolderInput(itemId) {
+            // Закрываем текущее модальное окно со списком папок
+            const modal = document.getElementById('folderSelectionModal');
+            if (modal) modal.remove();
+            
+            // Создаем новое модальное окно для ввода названия
+            const createModal = document.createElement('div');
+            createModal.id = 'createFolderModal';
+            createModal.className = 'modal';
+            createModal.innerHTML = `
+                <div class="modal-content" style="background: #000000; border: 2px solid var(--accent); border-radius: 15px; padding: 30px; max-width: 500px; width: 90%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="color: var(--accent); margin: 0; font-size: 1.3rem;"><i class="fas fa-folder-plus"></i> Создать новую папку</h3>
+                        <button onclick="closeCreateFolderModal()" style="background: none; color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='var(--accent)'" onmouseout="this.style.background='none';this.style.color='#fff'">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <input type="text" id="newFolderNameInput" placeholder="Название папки" maxlength="50" autofocus style="width: 100%; padding: 15px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; color: var(--text-color); font-family: var(--font); font-size: 1rem; margin-bottom: 20px; box-sizing: border-box;">
+                    <div class="modal-buttons" style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button onclick="closeCreateFolderModal()" class="btn-secondary" style="background: rgba(255,255,255,0.1); color: var(--text-color); border: 1px solid rgba(255,255,255,0.2); padding: 12px 24px; border-radius: 20px; cursor: pointer; transition: all 0.3s; font-weight: 600;">Отмена</button>
+                        <button onclick="submitNewFolder('${itemId}')" class="btn-primary" style="background: var(--accent); color: #000; border: none; padding: 12px 30px; border-radius: 20px; cursor: pointer; transition: all 0.3s; font-weight: 600;">Создать</button>
                     </div>
                 </div>
             `;
-
-            // Insert after the "Create new folder" option
-            const createOption = document.querySelector('.create-new-folder');
-            if (createOption) {
-                createOption.after(inputDiv);
-            }
-
-            document.getElementById('newFolderNameInput').focus();
-
+            
+            document.body.appendChild(createModal);
+            
+            // Focus on input
+            setTimeout(() => {
+                document.getElementById('newFolderNameInput').focus();
+            }, 100);
+            
             // Submit on Enter
             document.getElementById('newFolderNameInput').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') submitNewFolder(itemId);
             });
+            
+            // Close on outside click
+            createModal.addEventListener('click', function(e) {
+                if (e.target === this) closeCreateFolderModal();
+            });
+        }
+        
+        // Закрыть окно создания папки
+        function closeCreateFolderModal() {
+            const modal = document.getElementById('createFolderModal');
+            if (modal) {
+                modal.remove();
+                // Возвращаемся к окну со списком папок
+                setTimeout(() => {
+                    if (window.currentItemId) {
+                        showFolderSelectionModal(window.currentItemId);
+                    }
+                }, 100);
+            }
+        }
+
+        function createFolderAndAdd(itemId) {
+            // Старая функция - больше не используется
+            console.log('createFolderAndAdd deprecated, use showCreateFolderInput instead');
         }
 
         function cancelFolderInput() {
@@ -1288,9 +1322,47 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    // Add item to new folder
-                    addToFolder(data.folder_id, itemId);
-                    cancelFolderInput();
+                    // Закрываем окно создания
+                    closeCreateFolderModal();
+                    
+                    // Сохраняем itemId для последующего использования
+                    window.currentItemId = itemId;
+                    
+                    // Добавляем элемент в новую папку
+                    const item = {
+                        id: parseInt(itemId),
+                        title: "{{ item.title }}",
+                        media_type: "{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}",
+                        poster_path: "{{ item.poster_path }}",
+                        vote_average: "{{ item.vote_average }}",
+                        release_date: "{{ item.release_date or item.year }}",
+                        overview: "{{ item.overview }}"
+                    };
+                    
+                    fetch('/api/favorites/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({...item, folder_id: data.folder_id})
+                    })
+                    .then(r => r.json())
+                    .then(addData => {
+                        if (addData.success) {
+                            showNotification(`Добавлено в "${data.name}"!`, 'success');
+                            // Обновляем иконку сердца
+                            const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
+                            if (btn) {
+                                btn.classList.add('active');
+                                const icon = btn.querySelector('i');
+                                if (icon) {
+                                    icon.classList.remove('far');
+                                    icon.classList.add('fas');
+                                }
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error adding to folder:', err);
+                    });
                 } else {
                     showNotification(data.message || 'Ошибка', 'error');
                 }
