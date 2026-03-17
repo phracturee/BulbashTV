@@ -487,15 +487,15 @@ class TorrentManager:
             print(f"[POPCORN-MPV] Log file: {self.LOG_PATH}")
             os.system(cmd)
 
-            # Wait for server to start (increased to 20 seconds)
-            print("[POPCORN-MPV] Waiting for server to start (20s)...")
+            # Wait for server to start with faster polling (500ms)
+            print("[POPCORN-MPV] Waiting for server to start (15s)...")
 
-            for i in range(20):
-                time.sleep(1)
+            for i in range(30):  # 30 * 500ms = 15 seconds
+                time.sleep(0.5)  # Check every 500ms
                 # Check if process started
                 result = subprocess.run(['pgrep', '-f', 'node.*server.js'], capture_output=True, text=True)
                 if result.returncode == 0:
-                    print(f"[POPCORN-MPV] Process started after {i+1} seconds")
+                    print(f"[POPCORN-MPV] Process started after {(i+1)*0.5} seconds")
                     # Also check if port 8888 is listening
                     try:
                         import socket
@@ -504,7 +504,7 @@ class TorrentManager:
                         sock.close()
                         if sock_result == 0:
                             print("[POPCORN-MPV] Port 8888 is listening")
-                            
+
                             # Read file index from log
                             file_index = 0  # Default
                             try:
@@ -518,7 +518,7 @@ class TorrentManager:
                                             break
                             except Exception as e:
                                 print(f"[POPCORN-MPV] Error reading file index: {e}")
-                            
+
                             self.status.status = "playing"
                             progress = self.get_playback_progress(magnet)
                             return True, "Popcorn-MPV started", f"http://localhost:8888/{file_index}", progress
@@ -530,7 +530,7 @@ class TorrentManager:
             result = subprocess.run(['pgrep', '-f', 'node.*server.js'], capture_output=True, text=True)
             if result.returncode == 0:
                 print("[POPCORN-MPV] Process exists, assuming it's working")
-                
+
                 # Read file index from log
                 file_index = 0
                 try:
@@ -543,7 +543,7 @@ class TorrentManager:
                                 break
                 except Exception as e:
                     print(f"[POPCORN-MPV] Error reading file index: {e}")
-                
+
                 self.status.status = "playing"
                 progress = self.get_playback_progress(magnet)
                 return True, "Popcorn-MPV started (slow)", f"http://localhost:8888/{file_index}", progress
