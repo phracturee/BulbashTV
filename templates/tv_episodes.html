@@ -1443,22 +1443,20 @@
                                 </div>
                             </div>
                             
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
-                                <div>
-                                    <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Прогресс</p>
-                                    <p id="streamProgress" style="color: #4CAF50; font-size: 1.2rem; font-weight: 600;">0%</p>
-                                </div>
-                                <div>
-                                    <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Скорость</p>
-                                    <p id="streamSpeed" style="color: var(--accent); font-size: 1rem;">0 MB/s</p>
-                                </div>
-                                <div>
-                                    <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Скачано</p>
-                                    <p id="streamDownloaded" style="color: var(--text-color); font-size: 1rem;">0 MB</p>
-                                </div>
-                                <div>
-                                    <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Пиры</p>
-                                    <p id="streamPeers" style="color: var(--text-color); font-size: 1rem;">0</p>
+                            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div>
+                                        <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Прогресс</p>
+                                        <p id="streamProgress" style="color: #4CAF50; font-size: 1.2rem; font-weight: 600;">0%</p>
+                                    </div>
+                                    <div>
+                                        <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Скорость</p>
+                                        <p id="streamSpeed" style="color: var(--accent); font-size: 1rem;">0 MB/s</p>
+                                    </div>
+                                    <div>
+                                        <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Скачано</p>
+                                        <p id="streamDownloaded" style="color: var(--text-color); font-size: 1rem;">0 MB</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1495,7 +1493,6 @@
                 const cappedProgress = data.progress !== undefined ? Math.min(data.progress, 100) : 0;
                 const progressText = cappedProgress.toFixed(1) + '%';
                 const speedText = data.download_speed || data.speed || '0 MB/s';
-                const peersText = data.peers || 0;
                 const downloadedText = data.downloaded || '0 MB';
                 const filename = data.filename || '';
                 
@@ -1526,7 +1523,6 @@
                 const progressBarEl = document.getElementById('streamProgressBar');
                 const speedEl = document.getElementById('streamSpeed');
                 const downloadedEl = document.getElementById('streamDownloaded');
-                const peersEl = document.getElementById('streamPeers');
                 const filenameEl = document.getElementById('streamFilename');
 
                 if (progressEl) progressEl.textContent = progressText;
@@ -1534,7 +1530,6 @@
                 if (progressBarEl) progressBarEl.style.width = cappedProgress + '%';
                 if (speedEl) speedEl.textContent = speedText;
                 if (downloadedEl) downloadedEl.textContent = downloadedText;
-                if (peersEl) peersEl.textContent = peersText;
 
                 // Update filename from status
                 if (filenameEl && filename) {
