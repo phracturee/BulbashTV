@@ -1153,11 +1153,7 @@
                 console.log('[handleFolderOptionClick] isInFolder:', isInFolder, 'currentFolders:', currentFolders);
                 
                 // Получаем данные о фильме/сериале из глобальной переменной или data-атрибутов
-                const rawPosterPath = option.dataset.itemPosterPath || originalPosterPath;
-                // Формируем URL для прокси
-                const itemPosterPath = rawPosterPath.startsWith('http') 
-                    ? `/api/image?url=${encodeURIComponent(rawPosterPath)}`
-                    : rawPosterPath;
+                const itemPosterPath = option.dataset.itemPosterPath || originalPosterPath;  // Используем напрямую без прокси
                 const itemTitle = option.dataset.itemTitle || "{{ item.title }}";
                 const itemMediaType = option.dataset.itemMediaType || "{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}";
                 const itemVoteAverage = option.dataset.itemVoteAverage || "{{ item.vote_average }}";
