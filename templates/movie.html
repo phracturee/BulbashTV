@@ -479,7 +479,7 @@
     <script>
         const movieTitle = "{{ item.title }}";
         const itemId = {{ item.id }};
-        const originalPosterPath = "{{ item.poster_path }}".replace('/api/image?url=', '');  // Оригинальный URL без прокси
+        const originalPosterPath = "{{ item.poster_path_original }}";  // Оригинальный URL TMDB
 
         // Update favorite icon on page load based on actual folders
         document.addEventListener('DOMContentLoaded', function() {
@@ -1153,9 +1153,11 @@
                 console.log('[handleFolderOptionClick] isInFolder:', isInFolder, 'currentFolders:', currentFolders);
                 
                 // Получаем данные о фильме/сериале из глобальной переменной или data-атрибутов
-                const rawPosterPath = option.dataset.itemPosterPath || "{{ item.poster_path }}";
-                // Если URL уже содержит /api/image, используем как есть, иначе добавляем прокси
-                const itemPosterPath = rawPosterPath.includes('/api/image') ? rawPosterPath : `/api/image?url=${encodeURIComponent(rawPosterPath)}`;
+                const rawPosterPath = option.dataset.itemPosterPath || originalPosterPath;
+                // Формируем URL для прокси
+                const itemPosterPath = rawPosterPath.startsWith('http') 
+                    ? `/api/image?url=${encodeURIComponent(rawPosterPath)}`
+                    : rawPosterPath;
                 const itemTitle = option.dataset.itemTitle || "{{ item.title }}";
                 const itemMediaType = option.dataset.itemMediaType || "{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}";
                 const itemVoteAverage = option.dataset.itemVoteAverage || "{{ item.vote_average }}";

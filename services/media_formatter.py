@@ -206,11 +206,13 @@ class MediaFormatter:
         if not movie_data:
             return None
 
+        poster_path_tmdb = movie_data.get("poster_path")
         return {
             "id": movie_data.get("id"),
             "title": movie_data.get("title", "Нет названия"),
             "overview": movie_data.get("overview", ""),
-            "poster_path": self.image_cache.get_image_url(movie_data.get("poster_path")),
+            "poster_path": self.image_cache.get_image_url(poster_path_tmdb),
+            "poster_path_original": f"https://image.tmdb.org/t/p/w500{poster_path_tmdb}" if poster_path_tmdb else "",
             "backdrop_path": self.image_cache.get_image_url(
                 movie_data.get("backdrop_path"), size="original"
             )
@@ -234,11 +236,13 @@ class MediaFormatter:
         if not tv_data:
             return None
 
+        poster_path_tmdb = tv_data.get("poster_path")
         return {
             "id": tv_data.get("id"),
             "title": tv_data.get("name", "Нет названия"),
             "overview": tv_data.get("overview", ""),
-            "poster_path": self.image_cache.get_image_url(tv_data.get("poster_path")),
+            "poster_path": self.image_cache.get_image_url(poster_path_tmdb),
+            "poster_path_original": f"https://image.tmdb.org/t/p/w500{poster_path_tmdb}" if poster_path_tmdb else "",
             "backdrop_path": self.image_cache.get_image_url(
                 tv_data.get("backdrop_path"), size="original"
             )
