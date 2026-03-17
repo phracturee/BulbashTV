@@ -946,9 +946,19 @@ body {
 
 /* Folder Selection Modal */
 .folder-selection-modal .modal-content {
-    max-width: 500px;
+    max-width: 600px;
     max-height: 80vh;
     overflow-y: auto;
+}
+
+/* Close button hover effect */
+.folder-selection-modal .modal-content button[onclick="closeFolderModal()"] {
+    background: none;
+}
+
+.folder-selection-modal .modal-content button[onclick="closeFolderModal()"]:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--accent);
 }
 
 .folder-list {
