@@ -204,7 +204,7 @@
                             {% if item.poster_path and item.poster_path.startswith('http') %}
                             <img src="{{ item.poster_path }}" alt="{{ item.title }}">
                             {% elif item.poster_path %}
-                            <img src="/api/image?url=https://image.tmdb.org/t/p/w500{{ item.poster_path }}" alt="{{ item.title }}">
+                            <img src="https://image.tmdb.org/t/p/w500{{ item.poster_path }}" alt="{{ item.title }}">
                             {% elif item.backdrop_path %}
                             <img src="{{ item.backdrop_path }}" alt="{{ item.title }}">
                             {% else %}
