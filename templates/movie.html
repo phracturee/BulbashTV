@@ -1041,6 +1041,14 @@
             if (modal) modal.remove();
         }
 
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : 'info'}-circle"></i><span>${message}</span>`;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+
         function addToFolder(folderId, itemId) {
             const item = {
                 id: itemId,
