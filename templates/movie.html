@@ -1073,10 +1073,13 @@
                         }
                     }
                     
-                    // Immediately refresh the modal to show updated state
+                    // Close current modal and reopen with fresh data
+                    const modal = document.getElementById('folderSelectionModal');
+                    if (modal) modal.remove();
+                    
                     setTimeout(() => {
                         showFolderSelectionModal(itemId);
-                    }, 300);
+                    }, 200);
                 } else {
                     showNotification(data.message || 'Ошибка', 'error');
                 }
@@ -1094,10 +1097,13 @@
                 if (data.success) {
                     showNotification('Удалено из папки', 'info');
                     
-                    // Immediately refresh the modal to show updated state
+                    // Close current modal and reopen with fresh data
+                    const modal = document.getElementById('folderSelectionModal');
+                    if (modal) modal.remove();
+                    
                     setTimeout(() => {
                         showFolderSelectionModal(itemId);
-                    }, 300);
+                    }, 200);
                 }
             })
             .catch(err => {
