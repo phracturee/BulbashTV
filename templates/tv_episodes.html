@@ -1480,6 +1480,7 @@
                 
                 // Reset playing state and start polling for status updates
                 window.wasPlaying = false;
+                window.episodeMarkedAsWatched = false;  // Reset watched flag
                 if (!window.seriesStatusInterval) {
                     window.seriesStatusInterval = setInterval(() => pollSeriesStatus(), 2000);
                 }
@@ -1560,6 +1561,29 @@
                 if (avCurrentEl) avCurrentEl.textContent = avCurrent || '0:00:00';
                 if (avTotalEl) avTotalEl.textContent = avTotal || '0:00:00';
                 if (playbackProgressBarEl) playbackProgressBarEl.style.width = avPercent + '%';
+                
+                // Auto-mark episode as watched when 100% reached
+                if (avPercent >= 95 && currentEpisode && !window.episodeMarkedAsWatched) {
+                    const episodeKey = `S${currentEpisode.season_number}E${currentEpisode.episode_number}`;
+                    if (!watchedEpisodes.has(episodeKey)) {
+                        console.log('[Playback] Episode 95%+ watched, marking as watched');
+                        watchedEpisodes.add(episodeKey);
+                        saveWatchedEpisodes();
+                        window.episodeMarkedAsWatched = true;
+                        
+                        // Update UI to show watched status
+                        const watchedBtn = document.querySelector(`.episode-btn-watched[onclick*="${episodeKey}"]`);
+                        if (watchedBtn) {
+                            watchedBtn.classList.add('watched');
+                            const icon = watchedBtn.querySelector('i');
+                            if (icon) {
+                                icon.className = 'fas fa-eye';
+                            }
+                        }
+                        
+                        showNotification('Серия отмечена как просмотренная', 'success');
+                    }
+                }
             })
             .catch(err => {
                 console.log('[Status] Poll error:', err);
