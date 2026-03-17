@@ -473,9 +473,9 @@ class TorrentManager:
                 self._save_torrent_history(magnet, title, query)
 
             # Kill old processes
-            os.system("pkill -f 'popcorn-mpv' 2>/dev/null || true")
-            os.system("pkill -f 'node.*server.js' 2>/dev/null || true")
-            time.sleep(1)
+            os.system("pkill -9 -f 'node server.js' 2>/dev/null || true")
+            os.system("pkill -9 mpv 2>/dev/null || true")
+            time.sleep(2)
 
             # Start striming-torrent-mpv server with episode pattern
             if episode_pattern:

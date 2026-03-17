@@ -58,7 +58,19 @@ let videoFile = null;
 let fileIndex = 0;
 let serverStarted = false;
 
+// Timeout for metadata (30 seconds)
+const metadataTimeout = setTimeout(() => {
+    console.error('❌ Таймаут получения метаданных (30с)');
+    console.error('💡 Возможные причины:');
+    console.error('   - Нет сидов (0 seeders)');
+    console.error('   - Торрент мёртвый');
+    console.error('   - Проблемы с подключением');
+    client.destroy();
+    process.exit(1);
+}, 30000);
+
 torrent.on('metadata', () => {
+    clearTimeout(metadataTimeout);
     console.log(`\n✅ Метаданные получены`);
     console.log(`📊 Торрент: ${torrent.name}`);
     console.log(`📁 Файлов: ${torrent.files.length}`);
@@ -159,6 +171,10 @@ torrent.on('metadata', () => {
 
         if (!videoFile) {
             console.log(`⚠️ Файл с паттерном не найден, берём первый видеофайл`);
+            console.log(`📁 Доступные файлы в торренте:`);
+            torrent.files.forEach((file, i) => {
+                console.log(`   [${i}] ${file.name} (${(file.length / 1024 / 1024).toFixed(1)} MB)`);
+            });
         }
     }
 
