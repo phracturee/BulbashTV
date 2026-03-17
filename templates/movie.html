@@ -1059,7 +1059,7 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    // Update heart icon
+                    // Update heart icon immediately
                     const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
                     if (btn) {
                         btn.classList.add('active');
@@ -1071,6 +1071,28 @@
                     }
                     showNotification(`Добавлено в "${data.folder_name}"!`, 'success');
                     closeFolderModal();
+                    
+                    // Update modal to reflect new state without reload
+                    setTimeout(() => {
+                        fetch(`/api/favorites/check/${itemId}`)
+                        .then(r => r.json())
+                        .then(checkData => {
+                            const currentFolders = checkData.folders || [];
+                            const isFavorite = currentFolders.length > 0 && !currentFolders.includes('watched');
+                            
+                            const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
+                            if (btn) {
+                                if (isFavorite) {
+                                    btn.classList.add('active');
+                                    const icon = btn.querySelector('i');
+                                    if (icon) {
+                                        icon.classList.remove('far');
+                                        icon.classList.add('fas');
+                                    }
+                                }
+                            }
+                        });
+                    }, 500);
                 } else {
                     showNotification(data.message || 'Ошибка', 'error');
                 }
@@ -1090,13 +1112,25 @@
                     fetch(`/api/favorites/check/${itemId}`)
                     .then(r => r.json())
                     .then(checkData => {
+                        const currentFolders = checkData.folders || [];
+                        const isFavorite = currentFolders.length > 0 && !currentFolders.includes('watched');
+                        
                         const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
-                        if (btn && !checkData.is_favorite) {
-                            btn.classList.remove('active');
-                            const icon = btn.querySelector('i');
-                            if (icon) {
-                                icon.classList.remove('fas');
-                                icon.classList.add('far');
+                        if (btn) {
+                            if (isFavorite) {
+                                btn.classList.add('active');
+                                const icon = btn.querySelector('i');
+                                if (icon) {
+                                    icon.classList.remove('far');
+                                    icon.classList.add('fas');
+                                }
+                            } else {
+                                btn.classList.remove('active');
+                                const icon = btn.querySelector('i');
+                                if (icon) {
+                                    icon.classList.remove('fas');
+                                    icon.classList.add('far');
+                                }
                             }
                         }
                         showNotification('Удалено из папки', 'info');
