@@ -1445,15 +1445,16 @@
             .then(data => {
                 console.log('[Status]', data);
 
-                // Track playing state to detect when MPV closes
-                if (window.wasPlaying === true && (data.status === 'stopped' || data.playing === false)) {
+                // Update playing state first
+                const wasPlaying = window.wasPlaying || false;
+                window.wasPlaying = data.playing;
+
+                // Close window if MPV was playing and now stopped
+                if (wasPlaying && !data.playing) {
                     console.log('[Status] MPV closed, closing window');
                     hideLoadingOverlay();
                     return;
                 }
-                
-                // Update playing state
-                window.wasPlaying = data.playing;
 
                 // Cap progress at 100%
                 const cappedProgress = data.progress !== undefined ? Math.min(data.progress, 100) : 0;
@@ -1482,6 +1483,15 @@
             })
             .catch(err => {
                 console.log('[Status] Poll error:', err);
+                // Stop polling after network error (server stopped)
+                if (window.seriesStatusInterval) {
+                    clearInterval(window.seriesStatusInterval);
+                    window.seriesStatusInterval = null;
+                }
+                // Close window after a few seconds
+                setTimeout(() => {
+                    hideLoadingOverlay();
+                }, 2000);
             });
         }
         
