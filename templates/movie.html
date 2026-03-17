@@ -479,6 +479,7 @@
     <script>
         const movieTitle = "{{ item.title }}";
         const itemId = {{ item.id }};
+        const originalPosterPath = "{{ item.poster_path }}".replace('/api/image?url=', '');  // Оригинальный URL без прокси
 
         // Update favorite icon on page load based on actual folders
         document.addEventListener('DOMContentLoaded', function() {
@@ -980,7 +981,7 @@
                              data-item-id="${itemId}"
                              data-item-title="{{ item.title|replace('"', '&quot;') }}"
                              data-item-media-type="{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}"
-                             data-item-poster-path="{{ item.poster_path }}"
+                             data-item-poster-path="${originalPosterPath}"
                              data-item-vote-average="{{ item.vote_average }}"
                              data-item-release-date="{{ item.release_date or item.year }}"
                              data-item-overview="{{ item.overview|replace('"', '&quot;') }}"
@@ -1152,9 +1153,11 @@
                 console.log('[handleFolderOptionClick] isInFolder:', isInFolder, 'currentFolders:', currentFolders);
                 
                 // Получаем данные о фильме/сериале из глобальной переменной или data-атрибутов
+                const rawPosterPath = option.dataset.itemPosterPath || "{{ item.poster_path }}";
+                // Если URL уже содержит /api/image, используем как есть, иначе добавляем прокси
+                const itemPosterPath = rawPosterPath.includes('/api/image') ? rawPosterPath : `/api/image?url=${encodeURIComponent(rawPosterPath)}`;
                 const itemTitle = option.dataset.itemTitle || "{{ item.title }}";
                 const itemMediaType = option.dataset.itemMediaType || "{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}";
-                const itemPosterPath = option.dataset.itemPosterPath || "{{ item.poster_path }}";
                 const itemVoteAverage = option.dataset.itemVoteAverage || "{{ item.vote_average }}";
                 const itemReleaseDate = option.dataset.itemReleaseDate || "{{ item.release_date or item.year }}";
                 const itemOverview = option.dataset.itemOverview || "{{ item.overview }}";
