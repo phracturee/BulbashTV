@@ -777,6 +777,8 @@
         // Save playback progress periodically
         let currentMagnet = null;
         let progressInterval = null;
+        let statusCheckInterval = null;
+        window.wasPlaying = false;  // Track MPV state
 
         function startStatusPolling(magnet) {
             currentMagnet = magnet;
@@ -839,8 +841,17 @@
                         if (filenameEl) filenameEl.textContent = data.filename;
                     }
 
-                    // Only close if explicitly completed by user
-                    // Don't close on 'stopped' or errors
+                    // Close window when MPV is closed (playing=false but was playing before)
+                    if (data.playing === false && window.wasPlaying === true) {
+                        console.log('[Player] MPV closed - closing window');
+                        closePlayer();
+                        return;
+                    }
+                    
+                    // Track playing state
+                    window.wasPlaying = data.playing;
+
+                    // Close if torrent completed
                     if (data.status === 'completed') {
                         console.log('[Player] Torrent completed');
                         showNotification('Воспроизведение завершено', 'info');
