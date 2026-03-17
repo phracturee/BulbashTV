@@ -15,14 +15,25 @@ console.log(`
 ║     🍿 Torrent Stream MPV - Стриминг в MPV плеер     ║
 ╠═══════════════════════════════════════════════════════╣
 ║  Использование:                                       ║
-║  node server.js <magnet-link>                         ║
+║  node server.js <magnet-link> [--episode SXXEYY]      ║
 ║                                                       ║
 ║  Пример:                                              ║
 ║  node server.js "magnet:?xt=urn:btih:..."             ║
+║  node server.js "magnet:..." --episode S01E02         ║
 ╚═══════════════════════════════════════════════════════╝
 `);
 
 let magnetUri = process.argv[2];
+let episodePattern = null;
+
+// Parse --episode argument
+for (let i = 3; i < process.argv.length; i++) {
+    if (process.argv[i] === '--episode' && process.argv[i + 1]) {
+        episodePattern = process.argv[i + 1];
+        console.log(`📺 Episode pattern: ${episodePattern}`);
+        i++; // Skip next argument
+    }
+}
 
 if (!magnetUri) {
     console.error('❌ Укажите magnet-ссылку!');
@@ -56,13 +67,95 @@ torrent.on('metadata', () => {
     const videoExts = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.wmv', '.m4v'];
     let maxSize = 0;
 
-    for (let i = 0; i < torrent.files.length; i++) {
-        const file = torrent.files[i];
-        const ext = path.extname(file.name).toLowerCase();
-        if (videoExts.includes(ext) && file.length > maxSize) {
-            videoFile = file;
-            fileIndex = i;
-            maxSize = file.length;
+    // Если указан паттерн эпизода (S01E02), ищем точное совпадение
+    if (episodePattern) {
+        console.log(`🔍 Поиск файла с паттерном: ${episodePattern}`);
+
+        // Извлекаем сезон и серию из паттерна
+        // Поддержка форматов: S01E06, S1E6, S1.E6, 1x06, 1x6, Серия 6, Episode 6
+        let season = null, episode = null;
+        
+        // Pattern: S01E06 or S1E6
+        let match = episodePattern.match(/^S(\d+)E(\d+)$/i);
+        if (match) {
+            season = parseInt(match[1]);
+            episode = parseInt(match[2]);
+        }
+        
+        // Pattern: S1.E6 or S01.E06
+        if (!season) {
+            match = episodePattern.match(/^S(\d+)\.E(\d+)$/i);
+            if (match) {
+                season = parseInt(match[1]);
+                episode = parseInt(match[2]);
+            }
+        }
+        
+        // Pattern: 1x06 or 1x6
+        if (!season) {
+            match = episodePattern.match(/^(\d+)x(\d+)$/i);
+            if (match) {
+                season = parseInt(match[1]);
+                episode = parseInt(match[2]);
+            }
+        }
+        
+        // Pattern: Серия 6 or Episode 6
+        if (!season) {
+            match = episodePattern.match(/^(?:Серия|Episode)\s*(\d+)$/i);
+            if (match) {
+                season = 1; // Default season 1
+                episode = parseInt(match[1]);
+            }
+        }
+
+        if (season && episode) {
+            console.log(`🎯 Сезон: ${season}, Серия: ${episode}`);
+            
+            for (let i = 0; i < torrent.files.length; i++) {
+                const file = torrent.files[i];
+                const fileName = file.name;
+                const fileNameLower = fileName.toLowerCase();
+
+                // Check if file is a video file
+                const ext = path.extname(fileName).toLowerCase();
+                if (!videoExts.includes(ext)) continue;
+
+                // Extract season and episode from filename
+                // Patterns: S01E10, S1.E10, 1x10, Серия 10, Episode 10
+                const fileMatch = fileNameLower.match(/s?(\d+)\.?e?(\d+)|(\d+)x(\d+)|(?:серия|episode)\s*(\d+)/i);
+                
+                if (fileMatch) {
+                    const fileSeason = parseInt(fileMatch[1] || fileMatch[3] || fileMatch[5]);
+                    const fileEpisode = parseInt(fileMatch[2] || fileMatch[4] || fileMatch[5]);
+
+                    // Exact match for both season and episode (S01E01 != S01E10)
+                    if (fileSeason === season && fileEpisode === episode) {
+                        console.log(`✅ Найдено точное совпадение: ${file.name}`);
+                        videoFile = file;
+                        fileIndex = i;
+                        maxSize = file.length;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!videoFile) {
+            console.log(`⚠️ Файл с паттерном не найден, берём первый видеофайл`);
+        }
+    }
+
+    // Если видео не найдено по паттерну, берём самый большой файл
+    if (!videoFile) {
+        for (let i = 0; i < torrent.files.length; i++) {
+            const file = torrent.files[i];
+            const ext = path.extname(file.name).toLowerCase();
+            if (videoExts.includes(ext) && file.length > maxSize) {
+                videoFile = file;
+                fileIndex = i;
+                maxSize = file.length;
+            }
         }
     }
 
@@ -85,8 +178,10 @@ torrent.on('metadata', () => {
     }
 
     console.log(`\n🎬 Видеофайл: ${videoFile.name}`);
+    console.log(`Playing: ${videoFile.name}`);  // For backend parsing
     console.log(`📏 Размер: ${(videoFile.length / 1024 / 1024 / 1024).toFixed(2)} GB`);
-    
+    console.log(`📁 Индекс файла: ${fileIndex}`);
+
     // Запускаем сервер сразу после получения метаданных
     startStreaming();
 });
@@ -163,24 +258,34 @@ function startStreaming() {
         console.log(`\n🌐 Сервер запущен: http://localhost:${actualPort}`);
         const streamUrl = `http://localhost:${actualPort}/${fileIndex}`;
         console.log(`\n📺 URL потока: ${streamUrl}`);
-        
+
         // Ждём накопления буфера и запускаем mpv
+        let checkCount = 0;
         const checkBuffer = setInterval(() => {
+            checkCount++;
             const downloaded = torrent.downloaded;
-            // Ждём пока загрузится хотя бы 50MB или пройдёт 10 секунд
-            if (downloaded > 50 * 1024 * 1024) {
+            const progress = torrent.progress * 100;
+            
+            // Пробуем запустить MPV при разных условиях:
+            // 1. Загружено > 20MB (быстрый старт)
+            // 2. Прогресс > 3% (для больших файлов)
+            // 3. После 3-й проверки (3 секунды)
+            // 4. Таймаут 8 секунд
+            if (downloaded > 20 * 1024 * 1024 || progress > 3 || checkCount >= 3) {
                 clearInterval(checkBuffer);
+                console.log(`\n🎬 Условие запуска: загружено ${(downloaded / 1024 / 1024).toFixed(1)} MB, прогресс ${progress.toFixed(1)}%, проверка #${checkCount}`);
                 launchMpv(streamUrl, server);
             }
-        }, 1000);
-        
-        // Таймаут 15 секунд
+        }, 500); // Проверяем каждые 500мс
+
+        // Таймаут 8 секунд - принудительный запуск
         setTimeout(() => {
             clearInterval(checkBuffer);
             if (!mpvLaunched) {
+                console.log(`\n🎬 Принудительный запуск по таймауту (8с)`);
                 launchMpv(streamUrl, server);
             }
-        }, 15000);
+        }, 8000);
     });
 
     // Статистика

@@ -84,7 +84,7 @@ class ImageCache:
     def get_image_url(
         self, tmdb_path: Optional[str], size: str = "w500", is_main: bool = False
     ) -> Optional[str]:
-        """Get image URL - local for main movie, TMDB CDN for others"""
+        """Get image URL - local for main movie, proxy for others"""
         if not tmdb_path:
             return None
 
@@ -93,7 +93,9 @@ class ImageCache:
             if local:
                 return local
 
-        return f"https://image.tmdb.org/t/p/{size}{tmdb_path}"
+        # Use proxy URL to avoid CORS issues
+        tmdb_url = f"https://image.tmdb.org/t/p/{size}{tmdb_path}"
+        return f"/api/image?url={tmdb_url}"
 
 
 class MediaFormatter:
@@ -135,9 +137,18 @@ class MediaFormatter:
     def format_tv_show(self, show: Dict[str, Any]) -> Dict[str, Any]:
         """Format TV show data for template"""
         show_id = show.get("id")
+        
+        # Format title: "Russian Name / English Name" if both available
+        title = show.get("name", "Без названия")
+        original_name = show.get("original_name", "")
+        
+        # If title is in Russian and we have English original name
+        if original_name and title != original_name:
+            title = f"{title} / {original_name}"
+        
         return {
             "id": show_id,
-            "title": show.get("name", "Без названия"),
+            "title": title,
             "overview": show.get("overview", ""),
             "poster_path": self.image_cache.get_image_url(
                 show.get("poster_path"), "w500"

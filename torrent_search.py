@@ -358,20 +358,31 @@ class TorrentSearcher:
 
     def search_series(self, series_name: str, season: int) -> List[TorrentResult]:
         """Search for TV series with specific season"""
-        # Format query: "Series Name Season: X"
+        # Format query: "Series Name / Season: X"
+        # Try to extract English name if available (format: "Russian / English")
         query = f"{series_name} Сезон: {season}"
-        print(f"[Series Search] Searching for: {query}")
         
+        # If series name contains both Russian and English (separated by /)
+        if '/' in series_name:
+            parts = series_name.split('/')
+            if len(parts) >= 2:
+                # Use format: "Russian / English / Season: X"
+                russian_name = parts[0].strip()
+                english_name = parts[1].strip()
+                query = f"{russian_name} / {english_name} / Сезон: {season}"
+        
+        print(f"[Series Search] Searching for: {query}")
+
         # Search RuTracker (best for Russian series)
         try:
             results = self.search_rutracker(query, max_pages=3)
-            
+
             # Filter results for exact match
             filtered = []
             for r in results:
                 if self._is_correct_series(r.title, series_name, season):
                     filtered.append(r)
-            
+
             print(f"[Series Search] Found {len(filtered)} matching torrents")
             return filtered
         except Exception as e:

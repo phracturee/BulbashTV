@@ -133,6 +133,9 @@ class BulbashTVApp:
 
         # API routes - Misc
         self.app.route("/api/log", methods=["POST"])(self.api_log)
+        
+        # API routes - Images (proxy for TMDB images to avoid CORS issues)
+        self.app.route("/api/image")(self.proxy_image)
 
     def run(self, host="0.0.0.0", port=5000, debug=False):
         """Run the application"""
@@ -861,9 +864,10 @@ class BulbashTVApp:
     def torrent_status(self):
         """Get torrent streaming status"""
         status = self.torrent_manager.get_status()
-        
+
         # Add additional info for frontend
-        return jsonify({
+        from flask import make_response
+        response = make_response(jsonify({
             "playing": status.get("playing", False),
             "filename": status.get("filename", ""),
             "time": status.get("time", "0:00"),
@@ -874,7 +878,15 @@ class BulbashTVApp:
             "seeds": status.get("seeds", 0),
             "downloaded": status.get("downloaded", "0 MB"),
             "uploaded": status.get("uploaded", "0 MB"),
-        })
+            "av_line": status.get("av_line", ""),
+        }))
+        
+        # Disable caching
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        return response
 
     def stop_torrent(self):
         """Stop torrent streaming"""
@@ -953,6 +965,41 @@ class BulbashTVApp:
         if data and "message" in data:
             print(f"[PLAYER] {data['message']}")
         return jsonify({"success": True})
+
+    def proxy_image(self):
+        """Proxy TMDB images to avoid CORS issues"""
+        from flask import Response
+        import requests
+        
+        image_url = request.args.get("url", "")
+        
+        if not image_url:
+            return jsonify({"error": "URL parameter required"}), 400
+        
+        if not image_url.startswith("https://image.tmdb.org"):
+            return jsonify({"error": "Invalid URL"}), 400
+        
+        try:
+            # Fetch image from TMDB
+            response = requests.get(image_url, timeout=10)
+            response.raise_for_status()
+            
+            # Get content type from response
+            content_type = response.headers.get("Content-Type", "image/jpeg")
+            
+            # Return image with CORS headers
+            return Response(
+                response.content,
+                status=response.status_code,
+                headers={
+                    "Content-Type": content_type,
+                    "Access-Control-Allow-Origin": "*",
+                    "Cache-Control": "public, max-age=86400",  # Cache for 1 day
+                }
+            )
+        except requests.RequestException as e:
+            logger.error(f"Error proxying image: {e}")
+            return jsonify({"error": "Failed to fetch image"}), 500
 
 
 # Create application instance

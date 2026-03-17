@@ -462,6 +462,11 @@ class TorrentManager:
         print("=" * 60)
 
         try:
+            # Clear old log file before starting new session
+            if os.path.exists(self.LOG_PATH):
+                os.remove(self.LOG_PATH)
+                print(f"[POPCORN-MPV] Cleared old log file")
+            
             # Save to history
             if title and query:
                 self._save_selected_torrent(magnet, title, query)
@@ -499,21 +504,50 @@ class TorrentManager:
                         sock.close()
                         if sock_result == 0:
                             print("[POPCORN-MPV] Port 8888 is listening")
+                            
+                            # Read file index from log
+                            file_index = 0  # Default
+                            try:
+                                with open(self.LOG_PATH, 'r', encoding='utf-8', errors='ignore') as f:
+                                    for line in f:
+                                        if 'Индекс файла:' in line:
+                                            match = re.search(r'Индекс файла:\s*(\d+)', line)
+                                            if match:
+                                                file_index = int(match.group(1))
+                                                print(f"[POPCORN-MPV] File index: {file_index}")
+                                            break
+                            except Exception as e:
+                                print(f"[POPCORN-MPV] Error reading file index: {e}")
+                            
                             self.status.status = "playing"
                             progress = self.get_playback_progress(magnet)
-                            return True, "Popcorn-MPV started", f"http://localhost:8888/0", progress
+                            return True, "Popcorn-MPV started", f"http://localhost:8888/{file_index}", progress
                     except:
                         pass
                     # Process exists but port not ready yet, continue waiting
-            
+
             # Timeout - check if process exists anyway
             result = subprocess.run(['pgrep', '-f', 'node.*server.js'], capture_output=True, text=True)
             if result.returncode == 0:
                 print("[POPCORN-MPV] Process exists, assuming it's working")
+                
+                # Read file index from log
+                file_index = 0
+                try:
+                    with open(self.LOG_PATH, 'r', encoding='utf-8', errors='ignore') as f:
+                        for line in f:
+                            if 'Индекс файла:' in line:
+                                match = re.search(r'Индекс файла:\s*(\d+)', line)
+                                if match:
+                                    file_index = int(match.group(1))
+                                break
+                except Exception as e:
+                    print(f"[POPCORN-MPV] Error reading file index: {e}")
+                
                 self.status.status = "playing"
                 progress = self.get_playback_progress(magnet)
-                return True, "Popcorn-MPV started (slow)", f"http://localhost:8888/0", progress
-            
+                return True, "Popcorn-MPV started (slow)", f"http://localhost:8888/{file_index}", progress
+
             print("[POPCORN-MPV] Failed to start process")
             return False, "Failed to start popcorn-mpv", "", {}
 
@@ -534,58 +568,131 @@ class TorrentManager:
             return False
 
     def get_status(self) -> Dict[str, Any]:
-        """Get current torrent status"""
+        """Get current torrent streaming status"""
         self.status.update_from_log(self.LOG_PATH)
-        self.status.check_process_running()
         status = self.status.to_dict()
-        
+
         # Try to get additional info from log
         if os.path.exists(self.LOG_PATH):
             try:
                 with open(self.LOG_PATH, "r", encoding="utf-8", errors="ignore") as f:
                     log_content = f.read()
-                    
+
                     # Parse filename
                     filename_match = re.search(r'Playing:\s*(.+?)(?:\n|$)', log_content)
                     if filename_match:
                         status["filename"] = filename_match.group(1).strip()
-                        print(f"[STATUS] Playing file: {status['filename']}")
-                    
+
                     # Parse download speed
                     speed_match = re.search(r'Download speed:\s*([\d.]+\s*[MGK]B/s)', log_content)
                     if speed_match:
                         status["download_speed"] = speed_match.group(1)
-                    
+
                     # Parse peers/seeds
                     peers_match = re.search(r'Peers:\s*(\d+)', log_content)
                     if peers_match:
                         status["peers"] = int(peers_match.group(1))
-                    
+
                     seeds_match = re.search(r'Seeds:\s*(\d+)', log_content)
                     if seeds_match:
                         status["seeds"] = int(seeds_match.group(1))
-                    
+
                     # Parse downloaded/uploaded
                     downloaded_match = re.search(r'Downloaded:\s*([\d.]+\s*[MGK]B)', log_content)
                     if downloaded_match:
                         status["downloaded"] = downloaded_match.group(1)
-                    
+
                     uploaded_match = re.search(r'Uploaded:\s*([\d.]+\s*[MGK]B)', log_content)
                     if uploaded_match:
                         status["uploaded"] = uploaded_match.group(1)
-                    
+
                     # Parse time
                     time_match = re.search(r'Time:\s*(\d+:\d+)', log_content)
                     if time_match:
                         status["time"] = time_match.group(1)
-                    
+
                     # Parse progress
                     progress_match = re.search(r'Progress:\s*([\d.]+)%', log_content)
                     if progress_match:
                         status["progress"] = float(progress_match.group(1))
-                        
+
+                    # Parse torrent progress from server.js output
+                    # Format: 📊 Прогресс: 4.5% | ⬇ 880.0 MB | 📶 Пиров: 18 | ⚡ 1.08 MB/s
+                    # Find LAST occurrence (most recent)
+                    torrent_progress_matches = list(re.finditer(r'📊 Прогресс:\s*([\d.]+)%\s*\|\s*⬇\s*([\d.]+)\s*MB\s*\|\s*📶 Пиров:\s*(\d+)\s*\|\s*⚡\s*([\d.]+)\s*MB/s', log_content))
+                    if torrent_progress_matches:
+                        last_match = torrent_progress_matches[-1]  # Get last (most recent) match
+                        status["progress"] = float(last_match.group(1))
+                        status["downloaded"] = f"{last_match.group(2)} MB"
+                        status["peers"] = int(last_match.group(3))
+                        status["download_speed"] = f"{last_match.group(4)} MB/s"
+
+                    # Parse MPV AV line - find LAST occurrence (most recent)
+                    # Format: AV: 00:00:57 / 00:23:15 (4%) A-V:  0.000 Cache: 30s/30MB
+                    av_matches = list(re.finditer(r'AV:\s*(\d+:\d+:\d+)\s*/\s*(\d+:\d+:\d+)\s*\((\d+)%\)', log_content))
+                    if av_matches:
+                        last_av = av_matches[-1]  # Get last (most recent) match
+                        status["av_current"] = last_av.group(1)
+                        status["av_total"] = last_av.group(2)
+                        status["av_percent"] = int(last_av.group(3))
+                        status["av_line"] = f"AV: {last_av.group(1)} / {last_av.group(2)} ({last_av.group(3)}%)"
+
             except Exception as e:
                 print(f"[STATUS] Error reading log from {self.LOG_PATH}: {e}")
-        
+
+        # Check if MPV exited (look for exit message in log AFTER last AV line)
+        # This prevents false positives from previous sessions
+        mpv_exited = False
+        if os.path.exists(self.LOG_PATH):
+            try:
+                with open(self.LOG_PATH, "r", encoding="utf-8", errors="ignore") as f:
+                    log_content = f.read()
+                    
+                    # Find position of last AV line
+                    av_matches = list(re.finditer(r'AV:\s*(\d+:\d+:\d+)\s*/\s*(\d+:\d+:\d+)\s*\((\d+)%\)', log_content))
+                    if av_matches:
+                        last_av_pos = av_matches[-1].end()
+                        # Check if there's an exit message AFTER the last AV line
+                        content_after_av = log_content[last_av_pos:]
+                        if "Exiting... (Quit)" in content_after_av or "MPV закрыт" in content_after_av:
+                            mpv_exited = True
+                            print("[STATUS] MPV exited after last AV position")
+            except:
+                pass
+
+        # Check if processes are running
+        try:
+            result = subprocess.run(["pgrep", "-f", "node.*server.js"], capture_output=True, text=True)
+            node_running = result.returncode == 0
+            mpv_result = subprocess.run(["pgrep", "-f", "mpv"], capture_output=True, text=True)
+            mpv_running = mpv_result.returncode == 0
+            
+            processes_running = node_running or mpv_running
+            print(f"[STATUS] Processes: node={node_running}, mpv={mpv_running}")
+        except:
+            processes_running = False
+
+        # Determine final status
+        if mpv_exited:
+            # MPV explicitly exited
+            status["status"] = "stopped"
+            status["playing"] = False
+            print("[STATUS] MPV exited, setting stopped")
+        elif processes_running:
+            # Processes are running, consider it playing (even if no data yet)
+            status["status"] = "playing"
+            status["playing"] = True
+            print("[STATUS] Processes running, setting playing")
+        elif status.get("av_line") or status.get("download_speed"):
+            # Processes not found but we have recent data
+            status["status"] = "playing"
+            status["playing"] = True
+            print("[STATUS] Has data but no processes, setting playing")
+        else:
+            # No processes, no data
+            status["status"] = "stopped"
+            status["playing"] = False
+            print("[STATUS] No processes and no data, setting stopped")
+
         print(f"[STATUS] {status}")
         return status
