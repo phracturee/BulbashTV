@@ -954,10 +954,11 @@ body {
 /* Close button hover effect */
 .folder-selection-modal .modal-content button[onclick="closeFolderModal()"] {
     background: none;
+    color: #fff;
 }
 
 .folder-selection-modal .modal-content button[onclick="closeFolderModal()"]:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.1);
     color: var(--accent);
 }
 
