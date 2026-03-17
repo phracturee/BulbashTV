@@ -1417,7 +1417,7 @@
                                 </div>
                                 <div>
                                     <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Пиры</p>
-                                    <p style="color: var(--text-color); font-weight: 600;">${torrent.peers || 0}</p>
+                                    <p id="infoPeers" style="color: var(--text-color); font-weight: 600;">${torrent.peers || 0}</p>
                                 </div>
                                 <div>
                                     <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Размер</p>
@@ -1493,6 +1493,7 @@
                 const speedText = data.download_speed || data.speed || '0 MB/s';
                 const downloadedText = data.downloaded || '0 MB';
                 const filename = data.filename || '';
+                const peersCount = data.peers || 0;
                 
                 // Parse AV position for playback progress
                 let avPercent = 0;
@@ -1522,17 +1523,15 @@
                 const speedEl = document.getElementById('streamSpeed');
                 const downloadedEl = document.getElementById('streamDownloaded');
                 const filenameEl = document.getElementById('streamFilename');
+                const infoPeersEl = document.getElementById('infoPeers');
 
                 if (progressEl) progressEl.textContent = progressText;
                 if (progressPercentEl) progressPercentEl.textContent = progressText;
                 if (progressBarEl) progressBarEl.style.width = cappedProgress + '%';
                 if (speedEl) speedEl.textContent = speedText;
                 if (downloadedEl) downloadedEl.textContent = downloadedText;
-
-                // Update filename from status
-                if (filenameEl && filename) {
-                    filenameEl.textContent = filename;
-                }
+                if (filenameEl && filename) filenameEl.textContent = filename;
+                if (infoPeersEl) infoPeersEl.textContent = peersCount;
                 
                 // Update or create playback progress section inside stats block
                 let playbackEl = document.getElementById('playbackProgress');
