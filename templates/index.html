@@ -615,10 +615,9 @@
         }
 
         function updateWatchedIcon(id, isWatched) {
-            // Find all watched buttons for this item
+            // Find all watched buttons for this item (both btn-secondary and watched-btn)
             const buttons = document.querySelectorAll(`button[onclick*="toggleWatched(${id})"]`);
-            console.log('updateWatchedIcon:', id, isWatched, 'found', buttons.length, 'buttons');
-            
+
             buttons.forEach(btn => {
                 const icon = btn.querySelector('i');
                 if (isWatched) {
@@ -648,20 +647,15 @@
             .then(r => r.json())
             .then(data => {
                 const isWatched = data.folders.includes('watched');
-                
+
                 if (isWatched) {
                     // Remove from watched folder
                     fetch(`/api/favorites/remove/${id}?folder_id=watched`, { method: 'DELETE' })
                     .then(r => r.json())
                     .then(removeData => {
+                        // Update icon immediately
                         updateWatchedIcon(id, false);
                         showNotification('Удалено из просмотренных', 'info');
-                        // Show the card again
-                        const card = document.querySelector(`.content-card[onclick*="/movie/${id}"], .content-card[onclick*="/tv/${id}"]`);
-                        if (card) {
-                            card.style.opacity = '1';
-                            card.style.pointerEvents = 'auto';
-                        }
                     });
                 } else {
                     // Add to watched folder
@@ -676,14 +670,9 @@
                     .then(r => r.json())
                     .then(addData => {
                         if (addData.success) {
+                            // Update icon immediately
                             updateWatchedIcon(id, true);
                             showNotification('Отмечено как просмотренное', 'success');
-                            // Hide the card
-                            const card = document.querySelector(`.content-card[onclick*="/movie/${id}"], .content-card[onclick*="/tv/${id}"]`);
-                            if (card) {
-                                card.style.opacity = '0.5';
-                                card.style.pointerEvents = 'none';
-                            }
                         } else {
                             showNotification(addData.message || 'Ошибка', 'error');
                         }
