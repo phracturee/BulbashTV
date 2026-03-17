@@ -1090,11 +1090,18 @@
                         // Update all folder options to reflect current state
                         document.querySelectorAll('.folder-option').forEach(option => {
                             const onclick = option.getAttribute('onclick');
-                            if (onclick && onclick.includes('addToFolder')) {
-                                const match = onclick.match(/addToFolder\('([^']+)',/);
+                            if (onclick && (onclick.includes('addToFolder') || onclick.includes('removeFromFolder'))) {
+                                const match = onclick.match(/(?:add|remove)FromFolder\('([^']+)',/);
                                 if (match) {
                                     const folderId = match[1];
                                     const isInFolder = currentFolders.includes(folderId);
+                                    
+                                    // Update onclick handler
+                                    if (isInFolder) {
+                                        option.setAttribute('onclick', `removeFromFolder('${folderId}', ${itemId})`);
+                                    } else {
+                                        option.setAttribute('onclick', `addToFolder('${folderId}', ${itemId})`);
+                                    }
                                     
                                     // Update styling
                                     option.className = `folder-option ${isInFolder ? 'in-folder' : ''}`;
@@ -1145,11 +1152,18 @@
                         // Update all folder options to reflect current state
                         document.querySelectorAll('.folder-option').forEach(option => {
                             const onclick = option.getAttribute('onclick');
-                            if (onclick && onclick.includes('addToFolder') || onclick && onclick.includes('removeFromFolder')) {
+                            if (onclick && (onclick.includes('addToFolder') || onclick.includes('removeFromFolder'))) {
                                 const match = onclick.match(/(?:add|remove)FromFolder\('([^']+)',/);
                                 if (match) {
                                     const folderId = match[1];
                                     const isInFolder = currentFolders.includes(folderId);
+                                    
+                                    // Update onclick handler
+                                    if (isInFolder) {
+                                        option.setAttribute('onclick', `removeFromFolder('${folderId}', ${itemId})`);
+                                    } else {
+                                        option.setAttribute('onclick', `addToFolder('${folderId}', ${itemId})`);
+                                    }
                                     
                                     // Update styling
                                     option.className = `folder-option ${isInFolder ? 'in-folder' : ''}`;
