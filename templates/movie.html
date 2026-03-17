@@ -975,7 +975,7 @@
 
                     const isInFolder = currentFolders.includes(folder.id);
                     foldersHtml += `
-                        <div class="folder-option ${isInFolder ? 'in-folder' : ''}" onclick="${isInFolder ? `removeFromFolder('${folder.id}', ${itemId})` : `addToFolder('${folder.id}', ${itemId})`}" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 1px solid ${isInFolder ? 'var(--accent)' : 'transparent'};">
+                        <div class="folder-option ${isInFolder ? 'in-folder' : ''}" data-folder-id="${folder.id}" data-item-id="${itemId}" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 1px solid ${isInFolder ? 'var(--accent)' : 'transparent'};">
                             <i class="fas fa-folder${isInFolder ? '' : '-open'}" style="color: var(--accent); font-size: 1.5rem;"></i>
                             <div class="folder-option-info" style="flex: 1;">
                                 <h4 style="margin: 0 0 5px 0; color: var(--text-color);">${folder.name}</h4>
@@ -989,7 +989,7 @@
                 // Add "Watched" button before "Create new folder" (like on homepage)
                 const isWatched = currentFolders.includes('watched');
                 foldersHtml += `
-                    <div class="folder-option watched-option ${isWatched ? 'in-folder' : ''}" onclick="toggleWatched(${itemId}); closeFolderModal();" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(76,175,80,0.1); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border-left: 3px solid #4CAF50;">
+                    <div class="folder-option watched-option ${isWatched ? 'in-folder' : ''}" data-folder-id="watched" data-item-id="${itemId}" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(76,175,80,0.1); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border-left: 3px solid #4CAF50;">
                         <i class="fas fa-eye" style="color: #4CAF50; font-size: 1.5rem;"></i>
                         <div class="folder-option-info" style="flex: 1;">
                             <h4 style="margin: 0 0 5px 0; color: var(--text-color);">Просмотренное</h4>
@@ -1001,7 +1001,7 @@
 
                 // Add "Create new folder" option at the end
                 foldersHtml += `
-                    <div class="folder-option create-new-folder" onclick="createFolderAndAdd(${itemId})" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(218,165,32,0.05); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 2px dashed var(--accent);">
+                    <div class="folder-option create-new-folder" data-folder-id="new" data-item-id="${itemId}" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(218,165,32,0.05); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 2px dashed var(--accent);">
                         <i class="fas fa-plus-circle" style="color: var(--accent); font-size: 1.5rem;"></i>
                         <div class="folder-option-info" style="flex: 1;">
                             <h4 style="margin: 0 0 5px 0; color: var(--text-color);">Создать новую папку</h4>
@@ -1024,6 +1024,23 @@
                 `;
 
                 document.body.appendChild(modal);
+
+                // Добавляем обработчики событий на все folder-option
+                modal.querySelectorAll('.folder-option').forEach(option => {
+                    option.addEventListener('click', function(e) {
+                        const folderId = this.dataset.folderId;
+                        const itemId = this.dataset.itemId;
+                        
+                        if (folderId === 'new') {
+                            createFolderAndAdd(itemId);
+                        } else if (folderId === 'watched') {
+                            toggleWatched(itemId);
+                            closeFolderModal();
+                        } else {
+                            handleFolderOptionClick(e, folderId, itemId);
+                        }
+                    });
+                });
 
                 // Close on outside click
                 modal.addEventListener('click', function(e) {
@@ -1049,7 +1066,65 @@
             setTimeout(() => notification.remove(), 3000);
         }
 
-        function addToFolder(folderId, itemId) {
+        // Обновление UI модального окна после добавления/удаления
+        function updateFolderModalUI(itemId) {
+            fetch(`/api/favorites/check/${itemId}`)
+            .then(r => r.json())
+            .then(checkData => {
+                const currentFolders = checkData.folders || [];
+                
+                // Обновляем все опции папок
+                document.querySelectorAll('.folder-option').forEach(option => {
+                    const folderId = option.dataset.folderId;
+                    if (!folderId) return;
+                    
+                    const isInFolder = currentFolders.includes(folderId);
+                    
+                    // Обновляем классы и стили
+                    option.classList.toggle('in-folder', isInFolder);
+                    option.style.border = isInFolder ? '1px solid var(--accent)' : '1px solid transparent';
+                    
+                    // Обновляем иконку папки
+                    const folderIcon = option.querySelector('.fa-folder');
+                    if (folderIcon) {
+                        folderIcon.className = `fas fa-folder${isInFolder ? '' : '-open'}`;
+                    }
+                    
+                    // Обновляем или создаём галочку
+                    let checkIcon = option.querySelector('.fa-check');
+                    if (isInFolder) {
+                        if (!checkIcon) {
+                            checkIcon = document.createElement('i');
+                            checkIcon.className = 'fas fa-check';
+                            checkIcon.style.color = 'var(--accent)';
+                            option.appendChild(checkIcon);
+                        }
+                    } else if (checkIcon) {
+                        checkIcon.remove();
+                    }
+                });
+                
+                // Обновляем иконку сердца на странице
+                const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
+                const isFavorite = currentFolders.length > 0 && !currentFolders.includes('watched');
+                if (btn) {
+                    btn.classList.toggle('active', isFavorite);
+                    const icon = btn.querySelector('i');
+                    if (icon) {
+                        icon.classList.toggle('fas', isFavorite);
+                        icon.classList.toggle('far', !isFavorite);
+                    }
+                }
+            });
+        }
+
+        // Обработчик клика по папке (делегирование событий)
+        function handleFolderOptionClick(event, folderId, itemId) {
+            event.stopPropagation();
+            
+            const option = event.currentTarget;
+            const isInFolder = option.classList.contains('in-folder');
+            
             const item = {
                 id: itemId,
                 title: "{{ item.title }}",
@@ -1059,162 +1134,54 @@
                 release_date: "{{ item.release_date or item.year }}",
                 overview: "{{ item.overview }}"
             };
-
-            fetch('/api/favorites/add', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({...item, folder_id: folderId})
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification(`Добавлено в "${data.folder_name}"!`, 'success');
-                    
-                    // Update heart icon on page
-                    const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
-                    if (btn) {
-                        btn.classList.add('active');
-                        const icon = btn.querySelector('i');
-                        if (icon) {
-                            icon.classList.remove('far');
-                            icon.classList.add('fas');
-                        }
+            
+            if (isInFolder) {
+                // Удаляем из папки
+                fetch(`/api/favorites/remove/${itemId}?folder_id=${folderId}`, { method: 'DELETE' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Удалено из папки', 'info');
+                        updateFolderModalUI(itemId);
                     }
-                    
-                    // Update the folder option UI immediately without closing modal
-                    fetch(`/api/favorites/check/${itemId}`)
-                    .then(r => r.json())
-                    .then(checkData => {
-                        const currentFolders = checkData.folders || [];
-                        
-                        // Update all folder options to reflect current state
-                        document.querySelectorAll('.folder-option').forEach(option => {
-                            const onclick = option.getAttribute('onclick');
-                            if (onclick && (onclick.includes('addToFolder') || onclick.includes('removeFromFolder'))) {
-                                const match = onclick.match(/(?:add|remove)FromFolder\('([^']+)',/);
-                                if (match) {
-                                    const folderId = match[1];
-                                    const isInFolder = currentFolders.includes(folderId);
-                                    
-                                    // Update onclick handler
-                                    if (isInFolder) {
-                                        option.setAttribute('onclick', `removeFromFolder('${folderId}', ${itemId})`);
-                                    } else {
-                                        option.setAttribute('onclick', `addToFolder('${folderId}', ${itemId})`);
-                                    }
-                                    
-                                    // Update styling
-                                    option.className = `folder-option ${isInFolder ? 'in-folder' : ''}`;
-                                    option.style.border = isInFolder ? '1px solid var(--accent)' : '1px solid transparent';
-                                    
-                                    // Update icon
-                                    const icon = option.querySelector('.fa-folder');
-                                    if (icon) {
-                                        icon.className = `fas fa-folder${isInFolder ? '' : '-open'}`;
-                                    }
-                                    
-                                    // Add/remove checkmark
-                                    const existingCheck = option.querySelector('.fa-check');
-                                    if (existingCheck) existingCheck.remove();
-                                    if (isInFolder) {
-                                        const checkIcon = document.createElement('i');
-                                        checkIcon.className = 'fas fa-check';
-                                        checkIcon.style.color = 'var(--accent)';
-                                        option.appendChild(checkIcon);
-                                    }
-                                }
-                            }
-                        });
-                    });
-                } else {
-                    showNotification(data.message || 'Ошибка', 'error');
-                }
-            })
-            .catch(err => {
-                console.error('Error adding to favorites:', err);
-                showNotification('Ошибка при добавлении', 'error');
-            });
+                })
+                .catch(err => {
+                    console.error('Error removing:', err);
+                    showNotification('Ошибка при удалении', 'error');
+                });
+            } else {
+                // Добавляем в папку
+                fetch('/api/favorites/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({...item, folder_id: folderId})
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification(`Добавлено в "${data.folder_name}"!`, 'success');
+                        updateFolderModalUI(itemId);
+                    } else {
+                        showNotification(data.message || 'Ошибка', 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error('Error adding:', err);
+                    showNotification('Ошибка при добавлении', 'error');
+                });
+            }
+        }
+
+        function addToFolder(folderId, itemId) {
+            // Эта функция теперь вызывается только из showFolderSelectionModal
+            // Основная логика в handleFolderOptionClick
+            console.log('addToFolder called, using handleFolderOptionClick instead');
         }
 
         function removeFromFolder(folderId, itemId) {
-            fetch(`/api/favorites/remove/${itemId}?folder_id=${folderId}`, { method: 'DELETE' })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification('Удалено из папки', 'info');
-                    
-                    // Update the folder option UI immediately without closing modal
-                    fetch(`/api/favorites/check/${itemId}`)
-                    .then(r => r.json())
-                    .then(checkData => {
-                        const currentFolders = checkData.folders || [];
-                        
-                        // Update all folder options to reflect current state
-                        document.querySelectorAll('.folder-option').forEach(option => {
-                            const onclick = option.getAttribute('onclick');
-                            if (onclick && (onclick.includes('addToFolder') || onclick.includes('removeFromFolder'))) {
-                                const match = onclick.match(/(?:add|remove)FromFolder\('([^']+)',/);
-                                if (match) {
-                                    const folderId = match[1];
-                                    const isInFolder = currentFolders.includes(folderId);
-                                    
-                                    // Update onclick handler
-                                    if (isInFolder) {
-                                        option.setAttribute('onclick', `removeFromFolder('${folderId}', ${itemId})`);
-                                    } else {
-                                        option.setAttribute('onclick', `addToFolder('${folderId}', ${itemId})`);
-                                    }
-                                    
-                                    // Update styling
-                                    option.className = `folder-option ${isInFolder ? 'in-folder' : ''}`;
-                                    option.style.border = isInFolder ? '1px solid var(--accent)' : '1px solid transparent';
-                                    
-                                    // Update icon
-                                    const icon = option.querySelector('.fa-folder');
-                                    if (icon) {
-                                        icon.className = `fas fa-folder${isInFolder ? '' : '-open'}`;
-                                    }
-                                    
-                                    // Add/remove checkmark
-                                    const existingCheck = option.querySelector('.fa-check');
-                                    if (existingCheck) existingCheck.remove();
-                                    if (isInFolder) {
-                                        const checkIcon = document.createElement('i');
-                                        checkIcon.className = 'fas fa-check';
-                                        checkIcon.style.color = 'var(--accent)';
-                                        option.appendChild(checkIcon);
-                                    }
-                                }
-                            }
-                        });
-                        
-                        // Update heart icon if removed from all folders
-                        const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
-                        const isFavorite = currentFolders.length > 0 && !currentFolders.includes('watched');
-                        if (btn) {
-                            if (isFavorite) {
-                                btn.classList.add('active');
-                            } else {
-                                btn.classList.remove('active');
-                            }
-                            const icon = btn.querySelector('i');
-                            if (icon) {
-                                if (isFavorite) {
-                                    icon.classList.remove('far');
-                                    icon.classList.add('fas');
-                                } else {
-                                    icon.classList.remove('fas');
-                                    icon.classList.add('far');
-                                }
-                            }
-                        }
-                    });
-                }
-            })
-            .catch(err => {
-                console.error('Error removing from favorites:', err);
-                showNotification('Ошибка при удалении', 'error');
-            });
+            // Эта функция теперь вызывается только из showFolderSelectionModal
+            // Основная логика в handleFolderOptionClick
+            console.log('removeFromFolder called, using handleFolderOptionClick instead');
         }
 
         function createFolderAndAdd(itemId) {
