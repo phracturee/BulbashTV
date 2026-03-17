@@ -113,7 +113,7 @@ class RutorSpider(BaseSpider):
                                 tracker="Rutor",
                                 size=size,
                                 seeds=seeds,
-                                peers=seeds + leechers,
+                                peers=leechers,  # Peers = leechers (seeders не пиры)
                                 year=year,
                                 quality=quality,
                             )
@@ -256,7 +256,7 @@ class RutorSpider(BaseSpider):
                             magnet=magnet,
                             tracker="Rutor",
                             seeds=seeds,
-                            peers=seeds + leechers,
+                            peers=leechers,  # Peers = leechers (seeders не пиры)
                             year=year,
                             quality=quality,
                         )

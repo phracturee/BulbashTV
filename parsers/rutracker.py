@@ -373,7 +373,7 @@ class RutrackerSpider(BaseSpider):
                         tracker="Rutracker",
                         size=topic_info["size"],
                         seeds=topic_info["seeds"],
-                        peers=topic_info["seeds"] + topic_info["leechers"],
+                        peers=topic_info["leechers"],  # Peers = leechers (seeders не пиры)
                         year=topic_info["year"],
                         quality=topic_info["quality"],
                     )
