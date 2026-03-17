@@ -1416,8 +1416,8 @@
                                     <p style="color: var(--accent); font-weight: 600;">${torrent.quality}</p>
                                 </div>
                                 <div>
-                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Сиды</p>
-                                    <p style="color: #4CAF50; font-weight: 600;">${torrent.seeds || 0}</p>
+                                    <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Пиры</p>
+                                    <p style="color: var(--text-color); font-weight: 600;">${torrent.peers || 0}</p>
                                 </div>
                                 <div>
                                     <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Размер</p>
@@ -1549,19 +1549,13 @@
                         if (statsHeader) {
                             playbackEl = document.createElement('div');
                             playbackEl.id = 'playbackProgress';
-                            playbackEl.style.cssText = 'margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);';
+                            playbackEl.style.cssText = 'margin-top: 20px; padding-top: 20px;';
                             statsHeader.parentElement.appendChild(playbackEl);
                         }
                     }
                     
                     if (playbackEl) {
-                        const pauseIcon = isPaused ? '<i class="fas fa-pause-circle" style="color: #FFA500; margin-right: 8px;"></i>' : '<i class="fas fa-play-circle" style="color: #4CAF50; margin-right: 8px;"></i>';
-                        const pauseText = isPaused ? ' (Paused)' : '';
-                        
                         playbackEl.innerHTML = `
-                            <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 1rem;">
-                                ${pauseIcon}Просмотр${pauseText}
-                            </h4>
                             <div style="margin-bottom: 15px;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                                     <span style="color: #888; font-size: 0.85rem;">Просмотрено</span>
