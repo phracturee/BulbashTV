@@ -1010,10 +1010,11 @@
 
                 // Add "Create new folder" option at the end
                 foldersHtml += `
-                    <div class="folder-option create-new-folder" data-folder-id="new" data-item-id="${itemId}" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(218,165,32,0.05); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 2px dashed var(--accent);">
+                    <div class="folder-option create-new-folder" data-folder-id="new" data-item-id="${itemId}" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(218,165,32,0.05); border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s; border: 1px solid transparent;">
                         <i class="fas fa-plus-circle" style="color: var(--accent); font-size: 1.5rem;"></i>
                         <div class="folder-option-info" style="flex: 1;">
                             <h4 style="margin: 0 0 5px 0; color: var(--text-color);">Создать новую папку</h4>
+                            <span style="color: #888; font-size: 0.85rem;">0 элементов</span>
                         </div>
                     </div>
                 `;
