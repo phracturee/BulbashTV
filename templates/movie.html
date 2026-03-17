@@ -1081,13 +1081,44 @@
                         }
                     }
                     
-                    // Close current modal and reopen with fresh data
-                    const modal = document.getElementById('folderSelectionModal');
-                    if (modal) modal.remove();
-                    
-                    setTimeout(() => {
-                        showFolderSelectionModal(itemId);
-                    }, 200);
+                    // Update the folder option UI immediately without closing modal
+                    fetch(`/api/favorites/check/${itemId}`)
+                    .then(r => r.json())
+                    .then(checkData => {
+                        const currentFolders = checkData.folders || [];
+                        
+                        // Update all folder options to reflect current state
+                        document.querySelectorAll('.folder-option').forEach(option => {
+                            const onclick = option.getAttribute('onclick');
+                            if (onclick && onclick.includes('addToFolder')) {
+                                const match = onclick.match(/addToFolder\('([^']+)',/);
+                                if (match) {
+                                    const folderId = match[1];
+                                    const isInFolder = currentFolders.includes(folderId);
+                                    
+                                    // Update styling
+                                    option.className = `folder-option ${isInFolder ? 'in-folder' : ''}`;
+                                    option.style.border = isInFolder ? '1px solid var(--accent)' : '1px solid transparent';
+                                    
+                                    // Update icon
+                                    const icon = option.querySelector('.fa-folder');
+                                    if (icon) {
+                                        icon.className = `fas fa-folder${isInFolder ? '' : '-open'}`;
+                                    }
+                                    
+                                    // Add/remove checkmark
+                                    const existingCheck = option.querySelector('.fa-check');
+                                    if (existingCheck) existingCheck.remove();
+                                    if (isInFolder) {
+                                        const checkIcon = document.createElement('i');
+                                        checkIcon.className = 'fas fa-check';
+                                        checkIcon.style.color = 'var(--accent)';
+                                        option.appendChild(checkIcon);
+                                    }
+                                }
+                            }
+                        });
+                    });
                 } else {
                     showNotification(data.message || 'Ошибка', 'error');
                 }
@@ -1105,13 +1136,65 @@
                 if (data.success) {
                     showNotification('Удалено из папки', 'info');
                     
-                    // Close current modal and reopen with fresh data
-                    const modal = document.getElementById('folderSelectionModal');
-                    if (modal) modal.remove();
-                    
-                    setTimeout(() => {
-                        showFolderSelectionModal(itemId);
-                    }, 200);
+                    // Update the folder option UI immediately without closing modal
+                    fetch(`/api/favorites/check/${itemId}`)
+                    .then(r => r.json())
+                    .then(checkData => {
+                        const currentFolders = checkData.folders || [];
+                        
+                        // Update all folder options to reflect current state
+                        document.querySelectorAll('.folder-option').forEach(option => {
+                            const onclick = option.getAttribute('onclick');
+                            if (onclick && onclick.includes('addToFolder') || onclick && onclick.includes('removeFromFolder')) {
+                                const match = onclick.match(/(?:add|remove)FromFolder\('([^']+)',/);
+                                if (match) {
+                                    const folderId = match[1];
+                                    const isInFolder = currentFolders.includes(folderId);
+                                    
+                                    // Update styling
+                                    option.className = `folder-option ${isInFolder ? 'in-folder' : ''}`;
+                                    option.style.border = isInFolder ? '1px solid var(--accent)' : '1px solid transparent';
+                                    
+                                    // Update icon
+                                    const icon = option.querySelector('.fa-folder');
+                                    if (icon) {
+                                        icon.className = `fas fa-folder${isInFolder ? '' : '-open'}`;
+                                    }
+                                    
+                                    // Add/remove checkmark
+                                    const existingCheck = option.querySelector('.fa-check');
+                                    if (existingCheck) existingCheck.remove();
+                                    if (isInFolder) {
+                                        const checkIcon = document.createElement('i');
+                                        checkIcon.className = 'fas fa-check';
+                                        checkIcon.style.color = 'var(--accent)';
+                                        option.appendChild(checkIcon);
+                                    }
+                                }
+                            }
+                        });
+                        
+                        // Update heart icon if removed from all folders
+                        const btn = document.querySelector(`.btn-favorite[data-id="${itemId}"]`);
+                        const isFavorite = currentFolders.length > 0 && !currentFolders.includes('watched');
+                        if (btn) {
+                            if (isFavorite) {
+                                btn.classList.add('active');
+                            } else {
+                                btn.classList.remove('active');
+                            }
+                            const icon = btn.querySelector('i');
+                            if (icon) {
+                                if (isFavorite) {
+                                    icon.classList.remove('far');
+                                    icon.classList.add('fas');
+                                } else {
+                                    icon.classList.remove('fas');
+                                    icon.classList.add('far');
+                                }
+                            }
+                        }
+                    });
                 }
             })
             .catch(err => {
