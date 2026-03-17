@@ -370,18 +370,10 @@
         }
         
         function toggleFavorite(id) {
-            const item = itemsData[id];
-            if (!item) return;
-            
-            fetch(`/api/favorites/check/${id}`)
-                .then(r => r.json())
-                .then(data => {
-                    if (data.is_favorite) {
-                        showFolderSelectionModal(id, data.folders, true);
-                    } else {
-                        showFolderSelectionModal(id, [], false);
-                    }
-                });
+            // Используем функцию из favorites-modal.js
+            if (typeof showFolderSelectionModal === 'function') {
+                showFolderSelectionModal(id);
+            }
         }
         
         function showFolderSelectionModal(itemId, currentFolders, isRemove) {
@@ -656,5 +648,6 @@
             window.location.href = `/${category}?genre=${genre}&sort=${sort}`;
         }
     </script>
+    <script src="{{ url_for('static', filename='js/favorites-modal.js') }}"></script>
 </body>
 </html>
