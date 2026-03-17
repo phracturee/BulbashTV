@@ -531,6 +531,12 @@
             }
         }
         
+        // Close folder modal
+        function closeFolderModal() {
+            const modal = document.getElementById('folderSelectionModal');
+            if (modal) modal.remove();
+        }
+        
         // Submit new folder
         function submitNewFolder(itemId) {
             const name = document.getElementById('newFolderNameInput').value.trim();
