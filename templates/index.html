@@ -46,10 +46,10 @@
                     <p class="overview">{{ trending[0].overview[:200] }}{% if trending[0].overview|length > 200 %}...{% endif %}</p>
                     <div class="actions">
                         <a href="{% if trending[0].media_type == 'Фильм' %}/movie/{{ trending[0].id }}{% else %}/tv/{{ trending[0].id }}{% endif %}" class="btn-primary" style="text-decoration: none;"><i class="fas fa-play"></i> Смотреть</a>
-                        <button class="btn-secondary {% if trending[0].is_favorite %}active{% endif %}" onclick="toggleFavorite({{ trending[0].id }})" title="{% if trending[0].is_favorite %}В избранном{% else %}Добавить в избранное{% endif %}">
+                        <button class="favorite-btn {% if trending[0].is_favorite %}active{% endif %}" onclick="toggleFavorite({{ trending[0].id }})" title="{% if trending[0].is_favorite %}В избранном{% else %}Добавить в избранное{% endif %}">
                             <i class="{% if trending[0].is_favorite %}fas{% else %}far{% endif %} fa-heart"></i>
                         </button>
-                        <button class="btn-secondary {% if trending[0].is_watched %}active{% endif %}" onclick="toggleWatched({{ trending[0].id }})" title="{% if trending[0].is_watched %}Просмотрено{% else %}Отметить как просмотренное{% endif %}">
+                        <button class="watched-btn {% if trending[0].is_watched %}active{% endif %}" onclick="toggleWatched({{ trending[0].id }})" title="{% if trending[0].is_watched %}Просмотрено{% else %}Отметить как просмотренное{% endif %}">
                             <i class="{% if trending[0].is_watched %}fas{% else %}far{% endif %} fa-eye{% if not trending[0].is_watched %}-slash{% endif %}"></i>
                         </button>
                     </div>
