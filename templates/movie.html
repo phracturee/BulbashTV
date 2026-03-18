@@ -31,7 +31,7 @@
         
         .player-container, .torrents-container {
             width: 100%;
-            max-width: 900px;
+            max-width: 700px;
             background: #000000;
             border-radius: 15px;
             padding: 30px;
@@ -416,90 +416,95 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="player-loading" id="playerLoading">
+            <div class="player-loading" id="playerLoading" style="padding: 0; margin: 0; text-align: left;">
                 <!-- Streaming info panel (always visible after torrent starts) -->
-                <div id="streamingInfo" style="display: none; margin-top: 10px;">
+                <div id="streamingInfo" style="display: none; text-align: left;">
                     <!-- Блок 1: Информация о раздаче -->
-                    <div style="background: #000000; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid var(--accent);">
-                        <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 1.1rem;">
+                    <div style="background: #000000; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid rgba(218,165,32,0.4);">
+                        <h3 style="color: var(--accent); margin: 0 0 12px 0; font-size: 1rem; font-weight: 600; text-align: left;">
                             <i class="fas fa-info-circle"></i> Информация о раздаче
-                        </h4>
-                        
-                        <div style="margin-bottom: 15px;">
-                            <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Раздача:</p>
-                            <p id="streamTorrentTitle" style="color: var(--text-color); line-height: 1.5; word-break: break-word;">-</p>
+                        </h3>
+
+                        <div style="margin-bottom: 12px; text-align: left;">
+                            <p style="color: #888; font-size: 0.8rem; margin: 0 0 4px 0; text-align: left;">Раздача:</p>
+                            <p id="streamTorrentTitle" style="color: var(--text-color); line-height: 1.4; word-break: break-word; margin: 0; text-align: left;">-</p>
                         </div>
-                        
-                        <div style="margin-bottom: 15px;">
-                            <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Файл:</p>
-                            <p id="streamFilename" style="color: var(--accent); line-height: 1.5; word-break: break-word;">-</p>
+
+                        <div style="margin-bottom: 12px; text-align: left;">
+                            <p style="color: #888; font-size: 0.8rem; margin: 0 0 4px 0; text-align: left;">Файл:</p>
+                            <p id="streamFilename" style="color: var(--accent); line-height: 1.4; word-break: break-word; font-size: 0.9rem; margin: 0; text-align: left;">-</p>
                         </div>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-top: 15px;">
-                            <div>
-                                <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Трекер</p>
-                                <p id="streamTracker" style="color: var(--text-color); font-size: 0.9rem;">-</p>
+
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; text-align: left;">
+                            <div style="text-align: left;">
+                                <p style="color: #888; font-size: 0.75rem; margin: 0 0 4px 0; text-align: left;">Трекер</p>
+                                <p id="streamTracker" style="color: var(--accent); font-size: 0.9rem; margin: 0; text-align: left;">-</p>
                             </div>
-                            <div>
-                                <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Качество</p>
-                                <p id="streamQuality" style="color: var(--accent); font-size: 0.9rem;">-</p>
+                            <div style="text-align: left;">
+                                <p style="color: #888; font-size: 0.75rem; margin: 0 0 4px 0; text-align: left;">Качество</p>
+                                <p id="streamQuality" style="color: var(--accent); font-size: 0.9rem; margin: 0; text-align: left;">-</p>
                             </div>
-                            <div>
-                                <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Пиры</p>
-                                <p id="streamPeers" style="color: var(--text-color); font-size: 0.9rem;">0</p>
+                            <div style="text-align: left;">
+                                <p style="color: #888; font-size: 0.75rem; margin: 0 0 4px 0; text-align: left;">Пиры</p>
+                                <p id="streamPeers" style="color: var(--text-color); font-size: 0.9rem; margin: 0; text-align: left;">0</p>
                             </div>
-                            <div>
-                                <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Размер</p>
-                                <p id="streamSize" style="color: var(--text-color); font-size: 0.9rem;">-</p>
+                            <div style="text-align: left;">
+                                <p style="color: #888; font-size: 0.75rem; margin: 0 0 4px 0; text-align: left;">Размер</p>
+                                <p id="streamSize" style="color: var(--text-color); font-size: 0.9rem; margin: 0; text-align: left;">-</p>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Блок 2: Статистика загрузки -->
-                    <div style="background: #000000; padding: 20px; border-radius: 15px; border: 1px solid var(--accent);">
-                        <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 1.1rem;">
+                    <div style="background: #000000; padding: 15px; border-radius: 10px; border: 1px solid rgba(218,165,32,0.4); text-align: left;">
+                        <h4 style="color: var(--accent); margin: 0 0 12px 0; font-size: 0.95rem; font-weight: 600; text-align: left;">
                             <i class="fas fa-chart-bar"></i> Статистика загрузки
                         </h4>
-                        
-                        <!-- Progress, Speed, Downloaded in one line -->
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                            <div style="text-align: center;">
-                                <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Прогресс</p>
-                                <p id="streamProgress" style="color: #4CAF50; font-size: 1.2rem; font-weight: 600;">0%</p>
+
+                        <!-- Progress bar -->
+                        <div style="margin-bottom: 12px; text-align: left;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; text-align: left;">
+                                <span style="color: #888; font-size: 0.75rem;">Загрузка торрента</span>
+                                <span id="streamProgressPercent" style="color: var(--accent); font-size: 0.75rem; font-weight: 600;">0%</span>
                             </div>
-                            <div style="text-align: center;">
-                                <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Скорость</p>
-                                <p id="streamSpeed" style="color: var(--accent); font-size: 1.1rem;">0 MB/s</p>
-                            </div>
-                            <div style="text-align: center;">
-                                <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Скачано</p>
-                                <p id="streamDownloaded" style="color: var(--text-color); font-size: 1.1rem;">0 MB</p>
+                            <div style="background: rgba(255,255,255,0.1); border-radius: 8px; height: 6px; overflow: hidden;">
+                                <div id="streamProgressBar" style="background: linear-gradient(90deg, var(--accent), #ffb700); height: 100%; width: 0%; transition: width 0.3s;"></div>
                             </div>
                         </div>
-                        
-                        <!-- Progress bar with time -->
-                        <div style="margin-top: 15px;">
-                            <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 10px; overflow: hidden; margin-bottom: 10px;">
-                                <div id="streamProgressBar" style="background: linear-gradient(90deg, #4CAF50, #8BC34A); height: 100%; width: 0%; transition: width 0.3s;"></div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; text-align: left;">
+                            <div style="text-align: left;">
+                                <p style="color: #888; font-size: 0.75rem; margin: 0 0 4px 0; text-align: left;">Прогресс</p>
+                                <p id="streamProgress" style="color: #4CAF50; font-size: 1rem; font-weight: 600; margin: 0; text-align: left;">0%</p>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span id="streamTimeCurrent" style="color: var(--text-color); font-size: 0.9rem;">0:00</span>
-                                <span style="color: #888; font-size: 0.9rem;">/</span>
-                                <span id="streamTimeTotal" style="color: #888; font-size: 0.9rem;">0:00</span>
+                            <div style="text-align: left;">
+                                <p style="color: #888; font-size: 0.75rem; margin: 0 0 4px 0; text-align: left;">Скорость</p>
+                                <p id="streamSpeed" style="color: var(--accent); font-size: 1rem; font-weight: 600; margin: 0; text-align: left;">0 MB/s</p>
+                            </div>
+                            <div style="text-align: left;">
+                                <p style="color: #888; font-size: 0.75rem; margin: 0 0 4px 0; text-align: left;">Скачано</p>
+                                <p id="streamDownloaded" style="color: var(--text-color); font-size: 1rem; font-weight: 600; margin: 0; text-align: left;">0 MB</p>
+                            </div>
+                        </div>
+
+                        <!-- Просмотрено (всегда отображается) -->
+                        <div id="playbackProgress" style="margin-top: 15px; padding-top: 15px; text-align: left;">
+                            <div style="margin-bottom: 12px; text-align: left;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px; text-align: left;">
+                                    <span style="color: #888; font-size: 0.75rem;">Просмотрено</span>
+                                    <span id="avPercent" style="color: var(--accent); font-size: 0.75rem; font-weight: 600;">0%</span>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.1); border-radius: 8px; height: 6px; overflow: hidden;">
+                                    <div id="playbackProgressBar" style="background: linear-gradient(90deg, #4CAF50, #8BC34A); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; text-align: left;">
+                                <span id="avCurrent" style="color: var(--text-color); font-size: 1rem; font-weight: 600; text-align: left;">0:00:00</span>
+                                <span style="color: #888; font-size: 0.85rem;">/ <span id="avTotal">0:00:00</span></span>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;">
-                    <button onclick="closePlayer()" style="padding: 12px 25px; background: #ff4444; border: none; border-radius: 5px; color: white; cursor: pointer; font-weight: 600;">
-                        <i class="fas fa-stop"></i> Остановить
-                    </button>
-                </div>
-
-                <p style="color: #666; font-size: 0.85rem; margin-top: 20px;">
-                    Окно закроется автоматически после завершения воспроизведения
-                </p>
             </div>
         </div>
     </div>
@@ -789,7 +794,9 @@
                 body: JSON.stringify({
                     magnet: magnet,
                     title: title,
-                    query: movieTitle
+                    query: movieTitle,
+                    media_type: 'movie',
+                    tmdb_id: itemId
                 })
             })
             .then(r => r.json())
@@ -822,6 +829,8 @@
 
         function startStatusPolling(magnet) {
             currentMagnet = magnet;
+            window.wasPlaying = false;  // Reset playing state
+            window.movieMarkedAsWatched = false;  // Reset watched flag
 
             // Save progress every 10 seconds
             progressInterval = setInterval(() => {
@@ -838,56 +847,92 @@
                 .then(data => {
                     console.log('[Status]', data);
 
-                    // Update streaming info panel
-                    if (data.progress !== undefined) {
-                        // Cap progress at 100%
-                        const cappedProgress = Math.min(data.progress, 100);
-                        const progressText = cappedProgress.toFixed(1) + '%';
-                        const speedText = data.download_speed || data.speed || '0 MB/s';
-                        const peersText = data.peers || 0;
-                        const downloadedText = data.downloaded || '0 MB';
+                    // Update playing state first
+                    const wasPlaying = window.wasPlaying || false;
+                    window.wasPlaying = data.playing;
 
-                        // Update text values
-                        const progressEl = document.getElementById('streamProgress');
-                        const speedEl = document.getElementById('streamSpeed');
-                        const downloadedEl = document.getElementById('streamDownloaded');
-                        const peersEl = document.getElementById('streamPeers');
-                        const progressBarEl = document.getElementById('streamProgressBar');
-                        const timeCurrentEl = document.getElementById('streamTimeCurrent');
-                        const timeTotalEl = document.getElementById('streamTimeTotal');
-
-                        if (progressEl) progressEl.textContent = progressText;
-                        if (speedEl) speedEl.textContent = speedText;
-                        if (downloadedEl) downloadedEl.textContent = downloadedText;
-                        if (peersEl) peersEl.textContent = peersText;
-                        if (progressBarEl) progressBarEl.style.width = cappedProgress + '%';
-                        
-                        // Update time display
-                        if (data.av_line) {
-                            // Parse "AV: 00:02:15 / 00:43:15 (5%)"
-                            const avMatch = data.av_line.match(/AV:\s*(\d+:\d+:\d+)\s*\/\s*(\d+:\d+:\d+)/);
-                            if (avMatch) {
-                                if (timeCurrentEl) timeCurrentEl.textContent = avMatch[1];
-                                if (timeTotalEl) timeTotalEl.textContent = avMatch[2];
-                            }
-                        }
-                    }
-
-                    // Update filename if available
-                    if (data.filename) {
-                        const filenameEl = document.getElementById('streamFilename');
-                        if (filenameEl) filenameEl.textContent = data.filename;
-                    }
-
-                    // Close window when MPV is closed (playing=false but was playing before)
-                    if (data.playing === false && window.wasPlaying === true) {
+                    // Close window if MPV was playing and now stopped
+                    if (wasPlaying && !data.playing) {
                         console.log('[Player] MPV closed - closing window');
                         closePlayer();
                         return;
                     }
 
-                    // Track playing state
-                    window.wasPlaying = data.playing;
+                    // Cap progress at 100%
+                    const cappedProgress = data.progress !== undefined ? Math.min(data.progress, 100) : 0;
+                    const progressText = cappedProgress.toFixed(1) + '%';
+                    const speedText = data.download_speed || data.speed || '0 MB/s';
+                    const downloadedText = data.downloaded || '0 MB';
+                    const filename = data.filename || '';
+                    const peersCount = data.peers || 0;
+
+                    // Parse AV position for playback progress
+                    let avPercent = 0;
+                    let avCurrent = '';
+                    let avTotal = '';
+                    let isPaused = false;
+
+                    if (data.av_line) {
+                        // Parse "AV: 00:02:15 / 00:43:15 (5%)"
+                        const avMatch = data.av_line.match(/AV:\s*(\d+:\d+:\d+)\s*\/\s*(\d+:\d+:\d+)\s*\((\d+)%\)/);
+                        if (avMatch) {
+                            avCurrent = avMatch[1];
+                            avTotal = avMatch[2];
+                            avPercent = parseInt(avMatch[3]);
+                        }
+                    }
+
+                    // Check if paused (look for paused indicator in status)
+                    if (data.av_line && data.av_line.includes('Paused')) {
+                        isPaused = true;
+                    }
+
+                    // Update UI elements - Block 1: Release info
+                    const progressEl = document.getElementById('streamProgress');
+                    const progressPercentEl = document.getElementById('streamProgressPercent');
+                    const progressBarEl = document.getElementById('streamProgressBar');
+                    const speedEl = document.getElementById('streamSpeed');
+                    const downloadedEl = document.getElementById('streamDownloaded');
+                    const filenameEl = document.getElementById('streamFilename');
+                    const peersEl = document.getElementById('streamPeers');
+
+                    if (progressEl) progressEl.textContent = progressText;
+                    if (progressPercentEl) progressPercentEl.textContent = progressText;
+                    if (progressBarEl) progressBarEl.style.width = cappedProgress + '%';
+                    if (speedEl) speedEl.textContent = speedText;
+                    if (downloadedEl) downloadedEl.textContent = downloadedText;
+                    if (filenameEl && filename) filenameEl.textContent = filename;
+                    if (peersEl) peersEl.textContent = peersCount;
+
+                    // Update playback progress (always visible)
+                    const avPercentEl = document.getElementById('avPercent');
+                    const avCurrentEl = document.getElementById('avCurrent');
+                    const avTotalEl = document.getElementById('avTotal');
+                    const playbackProgressBarEl = document.getElementById('playbackProgressBar');
+
+                    if (avPercentEl) avPercentEl.textContent = avPercent + '%';
+                    if (avCurrentEl) avCurrentEl.textContent = avCurrent || '0:00:00';
+                    if (avTotalEl) avTotalEl.textContent = avTotal || '0:00:00';
+                    if (playbackProgressBarEl) playbackProgressBarEl.style.width = avPercent + '%';
+
+                    // Auto-mark movie as watched when 95%+ reached
+                    if (avPercent >= 95 && !window.movieMarkedAsWatched) {
+                        console.log('[Playback] Movie 95%+ watched, marking as watched');
+                        window.movieMarkedAsWatched = true;
+
+                        // Mark as watched in database with current movie data
+                        toggleWatched(itemId, true, {
+                            title: "{{ item.title }}",
+                            media_type: "{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}",
+                            poster_path: "{{ item.poster_path_original }}",
+                            vote_average: "{{ item.vote_average }}",
+                            release_date: "{{ item.release_date or item.year }}",
+                            overview: "{{ item.overview }}",
+                            tmdb_id: {{ item.id }}
+                        });
+
+                        showNotification('Фильм отмечен как просмотренный', 'success');
+                    }
 
                     // Close if torrent completed
                     if (data.status === 'completed') {
@@ -896,7 +941,16 @@
                     }
                 })
                 .catch(err => {
-                    console.log('[Status] Check failed:', err);
+                    console.log('[Status] Poll error:', err);
+                    // Stop polling after network error (server stopped)
+                    if (statusCheckInterval) {
+                        clearInterval(statusCheckInterval);
+                        statusCheckInterval = null;
+                    }
+                    // Close window after a few seconds
+                    setTimeout(() => {
+                        closePlayer();
+                    }, 2000);
                 });
             }, 2000);
         }
@@ -1014,8 +1068,8 @@
 
                     const isInFolder = currentFolders.includes(folder.id);
                     foldersHtml += `
-                        <div class="folder-option ${isInFolder ? 'in-folder' : ''}" 
-                             data-folder-id="${folder.id}" 
+                        <div class="folder-option ${isInFolder ? 'in-folder' : ''}"
+                             data-folder-id="${folder.id}"
                              data-item-id="${itemId}"
                              data-item-title="{{ item.title|replace('"', '&quot;') }}"
                              data-item-media-type="{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}"
@@ -1408,14 +1462,52 @@
             });
         }
 
-        function toggleWatched(id) {
+        function toggleWatched(id, forceWatched = false, itemData = null) {
             fetch(`/api/favorites/check/${id}`)
             .then(r => r.json())
             .then(data => {
                 const isWatched = data.folders.includes('watched');
                 const btn = document.querySelector(`.btn-watched[onclick*="toggleWatched(${id})"]`);
                 const icon = btn.querySelector('i');
-                
+
+                // If forceWatched is true, always add to watched
+                if (forceWatched) {
+                    // Use provided itemData or get from current page
+                    const title = itemData ? itemData.title : "{{ item.title }}";
+                    // Use Russian media_type for favourites
+                    const mediaType = itemData ? itemData.media_type : "{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}";
+                    const posterPath = itemData ? itemData.poster_path : "{{ item.poster_path_original }}";
+                    const voteAverage = itemData ? itemData.vote_average : "{{ item.vote_average }}";
+                    const releaseDate = itemData ? itemData.release_date : "{{ item.release_date or item.year }}";
+                    const overview = itemData ? itemData.overview : "{{ item.overview }}";
+                    const tmdbId = itemData ? itemData.tmdb_id : {{ item.id }};
+
+                    fetch('/api/favorites/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            id: tmdbId,
+                            title: title,
+                            media_type: mediaType,
+                            poster_path: posterPath,
+                            vote_average: voteAverage,
+                            release_date: releaseDate,
+                            overview: overview,
+                            folder_id: 'watched'
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            btn.classList.add('active');
+                            icon.classList.remove('far', 'fa-eye-slash');
+                            icon.classList.add('fas', 'fa-eye');
+                            btn.title = 'Просмотрено';
+                        }
+                    });
+                    return;
+                }
+
                 if (isWatched) {
                     // Remove from watched
                     fetch(`/api/favorites/remove/${id}?folder_id=watched`, { method: 'DELETE' })
@@ -1433,10 +1525,10 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            id: id,
+                            id: {{ item.id }},
                             title: "{{ item.title }}",
                             media_type: "{{ item_type == 'tv' and 'Сериал' or 'Фильм' }}",
-                            poster_path: "{{ item.poster_path }}",
+                            poster_path: "{{ item.poster_path_original }}",
                             vote_average: "{{ item.vote_average }}",
                             release_date: "{{ item.release_date or item.year }}",
                             overview: "{{ item.overview }}",

@@ -1098,7 +1098,9 @@
                     magnet: torrent.magnet,
                     title: `${torrent.title} - Серия ${episode}`,
                     query: `${TV_TITLE} Сезон ${season}`,
-                    episode_pattern: episodePattern
+                    episode_pattern: episodePattern,
+                    media_type: 'tv',
+                    tmdb_id: TV_ID
                 })
             })
             .then(r => r.json())

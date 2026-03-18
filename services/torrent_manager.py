@@ -396,20 +396,30 @@ class TorrentManager:
                 pass
         return []
 
-    def _save_torrent_history(self, magnet: str, title: str, query: str):
-        """Save to torrent history - only movie title"""
+    def _save_torrent_history(self, magnet: str, title: str, query: str, media_type: str = "movie", tmdb_id: int = None):
+        """Save to torrent history - only movie/series title"""
         try:
             history = self._load_torrent_history()
-            clean_title = self._extract_movie_title(title, query)
+            
+            # For series - remove season info from query to group by series name
+            clean_query = self._extract_series_name(query)
+            
+            # Convert media_type to Russian for consistency with favourites
+            if media_type == 'tv':
+                media_type = 'Сериал'
+            else:
+                media_type = 'Фильм'
 
             for item in history:
-                if item.get("title") == clean_title:
+                if item.get("title") == clean_query:
                     history.remove(item)
                     break
 
             history.insert(0, {
-                "title": clean_title,
-                "query": query,
+                "title": clean_query,
+                "query": clean_query,
+                "media_type": media_type,
+                "tmdb_id": tmdb_id,
                 "timestamp": time.time(),
                 "date": time.strftime("%Y-%m-%d %H:%M:%S"),
             })
@@ -418,9 +428,18 @@ class TorrentManager:
 
             with open(self.TORRENT_HISTORY_FILE, "w", encoding="utf-8") as f:
                 json.dump(history, f, ensure_ascii=False, indent=2)
-            print(f"[TorrentManager] Saved to history: {clean_title}")
+            print(f"[TorrentManager] Saved to history: {clean_query} ({media_type}, tmdb_id={tmdb_id})")
         except Exception as e:
             print(f"Error saving to history: {e}")
+    
+    def _extract_series_name(self, query: str) -> str:
+        """Extract series name without season info"""
+        import re
+        # Remove "Сезон X", "Season X", "S01", etc.
+        clean = re.sub(r'\s*Сезон\s*\d+.*$', '', query, flags=re.IGNORECASE)
+        clean = re.sub(r'\s*Season\s*\d+.*$', '', clean, flags=re.IGNORECASE)
+        clean = re.sub(r'\s*S\d+.*$', '', clean, flags=re.IGNORECASE)
+        return clean.strip()
 
     def get_torrent_history(self) -> list:
         """Get torrent history"""
@@ -446,7 +465,7 @@ class TorrentManager:
 
     # ==================== Streaming with popcorn-mpv ====================
 
-    def start_streaming(self, magnet: Optional[str] = None, title: str = "", query: str = "", episode_pattern: str = "") -> tuple[bool, str, str, Dict]:
+    def start_streaming(self, magnet: Optional[str] = None, title: str = "", query: str = "", episode_pattern: str = "", media_type: str = "movie", tmdb_id: int = None) -> tuple[bool, str, str, Dict]:
         """Start torrent streaming with popcorn-mpv"""
         print("=" * 60)
         print("[POPCORN-MPV] Received start request")
@@ -459,6 +478,8 @@ class TorrentManager:
         print(f"[POPCORN-MPV] Title: {title}")
         print(f"[POPCORN-MPV] Query: {query}")
         print(f"[POPCORN-MPV] Episode Pattern: {episode_pattern}")
+        print(f"[POPCORN-MPV] Media Type: {media_type}")
+        print(f"[POPCORN-MPV] TMDB ID: {tmdb_id}")
         print("=" * 60)
 
         try:
@@ -466,11 +487,11 @@ class TorrentManager:
             if os.path.exists(self.LOG_PATH):
                 os.remove(self.LOG_PATH)
                 print(f"[POPCORN-MPV] Cleared old log file")
-            
+
             # Save to history
             if title and query:
                 self._save_selected_torrent(magnet, title, query)
-                self._save_torrent_history(magnet, title, query)
+                self._save_torrent_history(magnet, title, query, media_type, tmdb_id)
 
             # Kill old processes
             os.system("pkill -9 -f 'node server.js' 2>/dev/null || true")

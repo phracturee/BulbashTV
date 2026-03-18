@@ -318,50 +318,68 @@ class BulbashTVApp:
     def history_page(self):
         """Watch history page"""
         torrent_history = self.torrent_manager.get_torrent_history()
-        
+
         # Fetch TMDB data for each item to get posters and IDs
         enriched_history = []
         seen_titles = set()  # Track seen titles to avoid duplicates
-        
+
         for item in torrent_history:
             # Skip duplicates
             if item['title'] in seen_titles:
                 continue
             seen_titles.add(item['title'])
-            
-            # Search TMDB for this title
-            search_results = self.tmdb_client.search(item['query'], page=1)
-            
+
             poster_path = None
-            media_type = 'movie'
-            tmdb_id = None
-            
-            if search_results:
-                # Get first result
-                first_result = search_results[0]
-                poster_path = first_result.get('poster_path')
-                media_type = first_result.get('media_type', 'movie')
-                tmdb_id = first_result.get('id')
-                
-                # Add TMDB info to history item
-                enriched_item = {
-                    **item,
-                    'poster_path': poster_path,
-                    'media_type': media_type,
-                    'tmdb_id': tmdb_id,
-                    'url': f"/movie/{tmdb_id}" if media_type == 'movie' else f"/tv/{tmdb_id}",
-                }
-                enriched_history.append(enriched_item)
+            media_type = item.get('media_type', 'movie')
+            # Normalize media_type (support both English and Russian)
+            if media_type in ['Сериал', 'tv']:
+                media_type = 'tv'
             else:
-                # No TMDB result, use placeholder
-                enriched_history.append({
-                    **item,
-                    'poster_path': None,
-                    'media_type': 'movie',
-                    'tmdb_id': None,
-                    'url': f"/search?q={item['query']}",  # Fallback to search
-                })
-        
+                media_type = 'movie'
+            tmdb_id = item.get('tmdb_id')  # Get TMDB ID from history
+
+            # If we have tmdb_id, use it directly to get poster
+            if tmdb_id:
+                if media_type == 'tv':
+                    tmdb_data = self.tmdb_client.get_tv_details(tmdb_id)
+                else:
+                    tmdb_data = self.tmdb_client.get_movie_details(tmdb_id)
+
+                if tmdb_data:
+                    poster_path = tmdb_data.get('poster_path')
+
+            # If no poster found, try search
+            if not poster_path:
+                search_query = item['title']
+                search_results = self.tmdb_client.search(search_query, page=1)
+
+                if search_results:
+                    # Find result matching the stored media_type
+                    first_result = None
+                    for result in search_results:
+                        if result.get('media_type') == media_type:
+                            first_result = result
+                            break
+
+                    if first_result is None:
+                        first_result = search_results[0]
+
+                    poster_path = first_result.get('poster_path')
+                    media_type = first_result.get('media_type', media_type)
+                    tmdb_id = first_result.get('id')
+
+            # Add TMDB info to history item
+            # Convert media_type to Russian for display
+            display_media_type = 'Сериал' if media_type == 'tv' else 'Фильм'
+            enriched_item = {
+                **item,
+                'poster_path': poster_path,
+                'media_type': display_media_type,
+                'tmdb_id': tmdb_id,
+                'url': f"/movie/{tmdb_id}" if media_type == 'movie' else f"/tv/{tmdb_id}",
+            }
+            enriched_history.append(enriched_item)
+
         return render_template(
             "history.html",
             title="История просмотров",
@@ -836,6 +854,8 @@ class BulbashTVApp:
         title = data.get("title", "") if data else ""
         query = data.get("query", "") if data else ""
         episode_pattern = data.get("episode_pattern", "") if data else ""
+        media_type = data.get("media_type", "movie") if data else "movie"
+        tmdb_id = data.get("tmdb_id") if data else None
 
         logger.info(f"\n{'='*60}")
         logger.info(f"[START TORRENT] {'='*60}")
@@ -843,9 +863,11 @@ class BulbashTVApp:
         logger.info(f"[START] Title: {title}")
         logger.info(f"[START] Query: {query}")
         logger.info(f"[START] Episode Pattern: {episode_pattern}")
+        logger.info(f"[START] Media Type: {media_type}")
+        logger.info(f"[START] TMDB ID: {tmdb_id}")
         logger.info(f"[START] {'='*60}\n")
 
-        success, message, video_url, progress = self.torrent_manager.start_streaming(magnet, title, query, episode_pattern)
+        success, message, video_url, progress = self.torrent_manager.start_streaming(magnet, title, query, episode_pattern, media_type, tmdb_id)
 
         logger.info(f"\n{'='*60}")
         logger.info(f"[START RESULT] {'='*60}")
