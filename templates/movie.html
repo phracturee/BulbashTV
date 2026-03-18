@@ -422,43 +422,57 @@
                 <p id="playerStatus" style="color: #888; margin-top: 10px;">Подключение к серверу...</p>
 
                 <!-- Streaming info panel (hidden by default) -->
-                <div id="streamingInfo" style="display: none; margin-top: 25px; background: #000000; padding: 20px; border-radius: 15px; border: 1px solid rgba(218,165,32,0.3);">
-                    <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 1.1rem;">
-                        <i class="fas fa-chart-bar"></i> Информация о стриминге
-                    </h4>
-                    
-                    <div style="margin-bottom: 15px;">
-                        <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Файл:</p>
-                        <p id="streamFilename" style="color: var(--text-color); font-size: 0.95rem; word-break: break-all;">-</p>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                        <div>
-                            <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Прогресс загрузки</p>
-                            <p id="streamProgress" style="color: #4CAF50; font-size: 1.2rem; font-weight: 600;">0%</p>
+                <div id="streamingInfo" style="display: none; margin-top: 25px;">
+                    <!-- Блок 1: Информация о раздаче -->
+                    <div style="background: #000000; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid var(--accent);">
+                        <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 1.1rem;">
+                            <i class="fas fa-info-circle"></i> Информация о раздаче
+                        </h4>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Раздача:</p>
+                            <p id="streamTorrentTitle" style="color: var(--text-color); line-height: 1.5; word-break: break-word;">-</p>
                         </div>
-                        <div>
-                            <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Скорость</p>
-                            <p id="streamSpeed" style="color: var(--accent); font-size: 1.1rem;">0 MB/s</p>
-                        </div>
-                        <div>
-                            <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Скачано</p>
-                            <p id="streamDownloaded" style="color: var(--text-color); font-size: 1rem;">0 MB</p>
-                        </div>
-                        <div>
-                            <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Пиры</p>
-                            <p id="streamPeers" style="color: var(--text-color); font-size: 1rem;">0</p>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Файл:</p>
+                            <p id="streamFilename" style="color: var(--accent); line-height: 1.5; word-break: break-word;">-</p>
                         </div>
                     </div>
                     
-                    <!-- Progress bar -->
-                    <div style="margin-bottom: 15px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span style="color: #888; font-size: 0.85rem;">Загрузка торрента</span>
-                            <span id="streamProgressPercent" style="color: var(--accent); font-size: 0.85rem;">0%</span>
+                    <!-- Блок 2: Статистика загрузки -->
+                    <div style="background: #000000; padding: 20px; border-radius: 15px; border: 1px solid var(--accent);">
+                        <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 1.1rem;">
+                            <i class="fas fa-chart-bar"></i> Статистика загрузки
+                        </h4>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: #888; font-size: 0.85rem;">Загрузка торрента</span>
+                                <span id="streamProgressPercent" style="color: var(--accent); font-size: 0.85rem;">0%</span>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 8px; overflow: hidden;">
+                                <div id="streamProgressBar" style="background: linear-gradient(90deg, var(--accent), #ffb700); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                            </div>
                         </div>
-                        <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 8px; overflow: hidden;">
-                            <div id="streamProgressBar" style="background: linear-gradient(90deg, var(--accent), #ffb700); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Прогресс</p>
+                                <p id="streamProgress" style="color: #4CAF50; font-size: 1.2rem; font-weight: 600;">0%</p>
+                            </div>
+                            <div>
+                                <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Скорость</p>
+                                <p id="streamSpeed" style="color: var(--accent); font-size: 1.1rem;">0 MB/s</p>
+                            </div>
+                            <div>
+                                <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Скачано</p>
+                                <p id="streamDownloaded" style="color: var(--text-color); font-size: 1rem;">0 MB</p>
+                            </div>
+                            <div>
+                                <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Пиры</p>
+                                <p id="streamPeers" style="color: var(--text-color); font-size: 1rem;">0</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -734,6 +748,12 @@
             document.getElementById('playerOverlay').classList.add('active');
             updateStatus('Начало стриминга...', 'loading');
 
+            // Update torrent title in streaming info
+            const torrentTitleEl = document.getElementById('streamTorrentTitle');
+            if (torrentTitleEl) {
+                torrentTitleEl.textContent = title;
+            }
+
             console.log('[Player] Starting streaming...');
 
             // Start torrent with striming-torrent-mpv
@@ -751,17 +771,17 @@
                 console.log('[Player] Response:', data);
                 if (data.success && data.video_url) {
                     console.log('[Player] Video URL:', data.video_url);
-                    
+
                     // Show progress if available
                     if (data.progress && data.progress.position > 0) {
                         updateStatus(`Продолжить с ${data.progress.formatted}?`, 'info');
                     } else {
                         updateStatus('Запуск MPV...', 'loading');
                     }
-                    
+
                     // Don't open in new tab - popcorn-mpv handles MPV directly
                     updateStatus('MPV запущен! Статистика ниже...', 'success');
-                    
+
                     startStatusPolling(magnet);
                 } else {
                     console.error('[Player] Start failed:', data.message);
@@ -809,7 +829,7 @@
                         // Cap progress at 100%
                         const cappedProgress = Math.min(data.progress, 100);
                         const progressText = cappedProgress.toFixed(1) + '%';
-                        const speedText = data.speed || '0 MB/s';
+                        const speedText = data.download_speed || data.speed || '0 MB/s';
                         const peersText = data.peers || 0;
                         const downloadedText = data.downloaded || '0 MB';
 
@@ -827,12 +847,6 @@
                         if (speedEl) speedEl.textContent = speedText;
                         if (downloadedEl) downloadedEl.textContent = downloadedText;
                         if (peersEl) peersEl.textContent = peersText;
-
-                        // Update status message (without "Ожидание данных MPV...")
-                        updateStatus(
-                            `Загрузка: ${progressText} | Скорость: ${speedText} | Пиры: ${peersText}`,
-                            'loading'
-                        );
                     }
 
                     // Update filename if available
@@ -847,7 +861,7 @@
                         closePlayer();
                         return;
                     }
-                    
+
                     // Track playing state
                     window.wasPlaying = data.playing;
 
@@ -860,7 +874,6 @@
                 .catch(err => {
                     console.log('[Status] Check failed:', err);
                     // Keep trying, don't close on network errors
-                    updateStatus('Ожидание подключения...', 'loading');
                 });
             }, 2000);
         }
