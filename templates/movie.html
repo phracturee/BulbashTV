@@ -411,18 +411,14 @@
     <div class="player-overlay" id="playerOverlay">
         <div class="player-container">
             <div class="player-header">
-                <h2>{{ item.title }}</h2>
+                <h2><i class="fas fa-play-circle"></i> Воспроизведение</h2>
                 <button class="player-close" onclick="closePlayer()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="player-loading" id="playerLoading">
-                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: var(--accent); margin-bottom: 15px;"></i>
-                <h3>Запуск видео...</h3>
-                <p id="playerStatus" style="color: #888; margin-top: 10px;">Подключение к серверу...</p>
-
-                <!-- Streaming info panel (hidden by default) -->
-                <div id="streamingInfo" style="display: none; margin-top: 25px;">
+                <!-- Streaming info panel (always visible after torrent starts) -->
+                <div id="streamingInfo" style="display: none; margin-top: 10px;">
                     <!-- Блок 1: Информация о раздаче -->
                     <div style="background: #000000; padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid var(--accent);">
                         <h4 style="color: var(--accent); margin-bottom: 15px; font-size: 1.1rem;">
@@ -438,6 +434,25 @@
                             <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Файл:</p>
                             <p id="streamFilename" style="color: var(--accent); line-height: 1.5; word-break: break-word;">-</p>
                         </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-top: 15px;">
+                            <div>
+                                <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Трекер</p>
+                                <p id="streamTracker" style="color: var(--text-color); font-size: 0.9rem;">-</p>
+                            </div>
+                            <div>
+                                <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Качество</p>
+                                <p id="streamQuality" style="color: var(--accent); font-size: 0.9rem;">-</p>
+                            </div>
+                            <div>
+                                <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Пиры</p>
+                                <p id="streamPeers" style="color: var(--text-color); font-size: 0.9rem;">0</p>
+                            </div>
+                            <div>
+                                <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Размер</p>
+                                <p id="streamSize" style="color: var(--text-color); font-size: 0.9rem;">-</p>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Блок 2: Статистика загрузки -->
@@ -446,32 +461,31 @@
                             <i class="fas fa-chart-bar"></i> Статистика загрузки
                         </h4>
                         
-                        <div style="margin-bottom: 15px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                <span style="color: #888; font-size: 0.85rem;">Загрузка торрента</span>
-                                <span id="streamProgressPercent" style="color: var(--accent); font-size: 0.85rem;">0%</span>
+                        <!-- Progress, Speed, Downloaded in one line -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div style="text-align: center;">
+                                <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Прогресс</p>
+                                <p id="streamProgress" style="color: #4CAF50; font-size: 1.2rem; font-weight: 600;">0%</p>
                             </div>
-                            <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 8px; overflow: hidden;">
-                                <div id="streamProgressBar" style="background: linear-gradient(90deg, var(--accent), #ffb700); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                            <div style="text-align: center;">
+                                <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Скорость</p>
+                                <p id="streamSpeed" style="color: var(--accent); font-size: 1.1rem;">0 MB/s</p>
+                            </div>
+                            <div style="text-align: center;">
+                                <p style="color: #888; font-size: 0.8rem; margin-bottom: 5px;">Скачано</p>
+                                <p id="streamDownloaded" style="color: var(--text-color); font-size: 1.1rem;">0 MB</p>
                             </div>
                         </div>
                         
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <div>
-                                <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Прогресс</p>
-                                <p id="streamProgress" style="color: #4CAF50; font-size: 1.2rem; font-weight: 600;">0%</p>
+                        <!-- Progress bar with time -->
+                        <div style="margin-top: 15px;">
+                            <div style="background: rgba(255,255,255,0.1); border-radius: 10px; height: 10px; overflow: hidden; margin-bottom: 10px;">
+                                <div id="streamProgressBar" style="background: linear-gradient(90deg, #4CAF50, #8BC34A); height: 100%; width: 0%; transition: width 0.3s;"></div>
                             </div>
-                            <div>
-                                <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Скорость</p>
-                                <p id="streamSpeed" style="color: var(--accent); font-size: 1.1rem;">0 MB/s</p>
-                            </div>
-                            <div>
-                                <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Скачано</p>
-                                <p id="streamDownloaded" style="color: var(--text-color); font-size: 1rem;">0 MB</p>
-                            </div>
-                            <div>
-                                <p style="color: #888; font-size: 0.85rem; margin-bottom: 5px;">Пиры</p>
-                                <p id="streamPeers" style="color: var(--text-color); font-size: 1rem;">0</p>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span id="streamTimeCurrent" style="color: var(--text-color); font-size: 0.9rem;">0:00</span>
+                                <span style="color: #888; font-size: 0.9rem;">/</span>
+                                <span id="streamTimeTotal" style="color: #888; font-size: 0.9rem;">0:00</span>
                             </div>
                         </div>
                     </div>
@@ -629,9 +643,11 @@
                 const magnetData = encodeURIComponent(torrent.magnet);
                 const titleData = encodeURIComponent(torrent.title);
                 const trackerData = encodeURIComponent(torrent.tracker);
+                const qualityData = encodeURIComponent(torrent.quality || '');
+                const sizeData = encodeURIComponent(torrent.size || '');
 
                 const html = `
-                    <div class="torrent-item ${selectedClass}" data-magnet="${magnetData}" data-title="${titleData}" data-tracker="${trackerData}">
+                    <div class="torrent-item ${selectedClass}" data-magnet="${magnetData}" data-title="${titleData}" data-tracker="${trackerData}" data-quality="${qualityData}" data-size="${sizeData}">
                         <div class="torrent-info">
                             <div class="torrent-title">${selectedBadge}${displayTitle}${progressBadge}</div>
                             <div class="torrent-meta">
@@ -648,17 +664,19 @@
                         </div>
                     </div>
                 `;
-                
+
                 listDiv.insertAdjacentHTML('beforeend', html);
             }
-            
+
             // Add click handlers
             document.querySelectorAll('.torrent-item').forEach(item => {
                 item.addEventListener('click', function() {
                     const magnet = decodeURIComponent(this.dataset.magnet);
                     const title = decodeURIComponent(this.dataset.title);
                     const tracker = decodeURIComponent(this.dataset.tracker);
-                    selectTorrent(magnet, title, tracker);
+                    const quality = decodeURIComponent(this.dataset.quality);
+                    const size = decodeURIComponent(this.dataset.size);
+                    selectTorrent(magnet, title, tracker, quality, size);
                 });
             });
             
@@ -676,7 +694,9 @@
             const magnet = decodeURIComponent(item.dataset.magnet);
             const title = decodeURIComponent(item.dataset.title);
             const tracker = decodeURIComponent(item.dataset.tracker);
-            selectTorrent(magnet, title, tracker);
+            const quality = decodeURIComponent(item.dataset.quality);
+            const size = decodeURIComponent(item.dataset.size);
+            selectTorrent(magnet, title, tracker, quality, size);
         }
 
         function getPlaybackProgress(magnet) {
@@ -690,10 +710,12 @@
             return div.innerHTML;
         }
         
-        function selectTorrent(magnet, title, tracker) {
+        function selectTorrent(magnet, title, tracker, quality, size) {
             console.log('=== SELECT TORRENT ===');
             console.log('Title:', title);
             console.log('Tracker:', tracker);
+            console.log('Quality:', quality);
+            console.log('Size:', size);
             console.log('Magnet:', magnet.substring(0, 50) + '...');
 
             // For LostFilm - fetch real magnet link first
@@ -705,7 +727,7 @@
                     if (data.success && data.magnet) {
                         console.log('[LostFilm] Got magnet:', data.magnet.substring(0, 50) + '...');
                         // Continue with real magnet
-                        startStreaming(data.magnet, title, tracker);
+                        startStreaming(data.magnet, title, tracker, quality, size);
                     } else {
                         console.error('[LostFilm] Failed to get magnet:', data);
                         alert('Не удалось получить magnet ссылку для LostFilm');
@@ -726,10 +748,10 @@
             }
 
             // Regular magnet link - start streaming
-            startStreaming(magnet, title, tracker);
+            startStreaming(magnet, title, tracker, quality, size);
         }
 
-        function startStreaming(magnet, title, tracker) {
+        function startStreaming(magnet, title, tracker, quality, size) {
             // Save selected torrent to server
             fetch('/api/torrents/selected', {
                 method: 'POST',
@@ -746,13 +768,17 @@
 
             // Open player overlay
             document.getElementById('playerOverlay').classList.add('active');
-            updateStatus('Начало стриминга...', 'loading');
 
-            // Update torrent title in streaming info
+            // Update torrent info in streaming panel
             const torrentTitleEl = document.getElementById('streamTorrentTitle');
-            if (torrentTitleEl) {
-                torrentTitleEl.textContent = title;
-            }
+            const streamTrackerEl = document.getElementById('streamTracker');
+            const streamQualityEl = document.getElementById('streamQuality');
+            const streamSizeEl = document.getElementById('streamSize');
+            
+            if (torrentTitleEl) torrentTitleEl.textContent = title;
+            if (streamTrackerEl) streamTrackerEl.textContent = tracker;
+            if (streamQualityEl) streamQualityEl.textContent = quality || '-';
+            if (streamSizeEl) streamSizeEl.textContent = size || '-';
 
             console.log('[Player] Starting streaming...');
 
@@ -772,25 +798,19 @@
                 if (data.success && data.video_url) {
                     console.log('[Player] Video URL:', data.video_url);
 
-                    // Show progress if available
-                    if (data.progress && data.progress.position > 0) {
-                        updateStatus(`Продолжить с ${data.progress.formatted}?`, 'info');
-                    } else {
-                        updateStatus('Запуск MPV...', 'loading');
+                    // Show streaming info panel
+                    const streamingInfo = document.getElementById('streamingInfo');
+                    if (streamingInfo) {
+                        streamingInfo.style.display = 'block';
                     }
-
-                    // Don't open in new tab - popcorn-mpv handles MPV directly
-                    updateStatus('MPV запущен! Статистика ниже...', 'success');
 
                     startStatusPolling(magnet);
                 } else {
                     console.error('[Player] Start failed:', data.message);
-                    updateStatus('Ошибка: ' + data.message, 'error');
                 }
             })
             .catch(err => {
                 console.error('[Player] Fetch error:', err);
-                updateStatus('Ошибка подключения', 'error');
             });
         }
 
@@ -802,12 +822,6 @@
 
         function startStatusPolling(magnet) {
             currentMagnet = magnet;
-
-            // Show streaming info panel
-            const streamingInfo = document.getElementById('streamingInfo');
-            if (streamingInfo) {
-                streamingInfo.style.display = 'block';
-            }
 
             // Save progress every 10 seconds
             progressInterval = setInterval(() => {
@@ -835,18 +849,28 @@
 
                         // Update text values
                         const progressEl = document.getElementById('streamProgress');
-                        const progressPercentEl = document.getElementById('streamProgressPercent');
-                        const progressBarEl = document.getElementById('streamProgressBar');
                         const speedEl = document.getElementById('streamSpeed');
                         const downloadedEl = document.getElementById('streamDownloaded');
                         const peersEl = document.getElementById('streamPeers');
+                        const progressBarEl = document.getElementById('streamProgressBar');
+                        const timeCurrentEl = document.getElementById('streamTimeCurrent');
+                        const timeTotalEl = document.getElementById('streamTimeTotal');
 
                         if (progressEl) progressEl.textContent = progressText;
-                        if (progressPercentEl) progressPercentEl.textContent = progressText;
-                        if (progressBarEl) progressBarEl.style.width = cappedProgress + '%';
                         if (speedEl) speedEl.textContent = speedText;
                         if (downloadedEl) downloadedEl.textContent = downloadedText;
                         if (peersEl) peersEl.textContent = peersText;
+                        if (progressBarEl) progressBarEl.style.width = cappedProgress + '%';
+                        
+                        // Update time display
+                        if (data.av_line) {
+                            // Parse "AV: 00:02:15 / 00:43:15 (5%)"
+                            const avMatch = data.av_line.match(/AV:\s*(\d+:\d+:\d+)\s*\/\s*(\d+:\d+:\d+)/);
+                            if (avMatch) {
+                                if (timeCurrentEl) timeCurrentEl.textContent = avMatch[1];
+                                if (timeTotalEl) timeTotalEl.textContent = avMatch[2];
+                            }
+                        }
                     }
 
                     // Update filename if available
@@ -873,7 +897,6 @@
                 })
                 .catch(err => {
                     console.log('[Status] Check failed:', err);
-                    // Keep trying, don't close on network errors
                 });
             }, 2000);
         }
