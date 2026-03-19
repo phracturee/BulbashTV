@@ -697,7 +697,10 @@
                 
                 if (data.success && data.results && data.results.length > 0) {
                     console.log('[Torrent Search] Found', data.results.length, 'results');
-                    displayTorrents(data.results);
+                    
+                    // Sort torrents: RuTracker first (by quality desc), then others
+                    const sortedResults = sortTorrents(data.results);
+                    displayTorrents(sortedResults);
                 } else {
                     console.log('[Torrent Search] No results found');
                     contentDiv.innerHTML = `
@@ -721,14 +724,59 @@
                 `;
             });
         }
-        
+
+        function sortTorrents(torrents) {
+            // Quality ranking for sorting (higher = better)
+            const qualityRank = {
+                '4K': 10, '2160p': 10,
+                '1080p': 8, 'FHD': 8,
+                '720p': 6, 'HD': 6,
+                '480p': 4, 'SD': 4,
+                '360p': 2,
+                'TS': 1, 'CAM': 1, 'SCR': 1
+            };
+
+            return torrents.sort((a, b) => {
+                const aIsRutracker = a.tracker === 'RuTracker' || a.tracker === 'rutracker';
+                const bIsRutracker = b.tracker === 'RuTracker' || b.tracker === 'rutracker';
+
+                // RuTracker first, then others
+                if (aIsRutracker && !bIsRutracker) return -1;
+                if (!aIsRutracker && bIsRutracker) return 1;
+
+                // Within same tracker group, sort by quality (high to low)
+                const aQuality = a.quality || '';
+                const bQuality = b.quality || '';
+                
+                // Extract quality value
+                const getQualityRank = (q) => {
+                    q = q.toLowerCase();
+                    for (const [key, rank] of Object.entries(qualityRank)) {
+                        if (q.includes(key.toLowerCase())) return rank;
+                    }
+                    return 0; // Unknown quality
+                };
+
+                const aRank = getQualityRank(aQuality);
+                const bRank = getQualityRank(bQuality);
+
+                // Higher quality first
+                if (aRank !== bRank) return bRank - aRank;
+
+                // If same quality, sort by seeds (more seeds first)
+                const aSeeds = a.seeds || 0;
+                const bSeeds = b.seeds || 0;
+                return bSeeds - aSeeds;
+            });
+        }
+
         function displayTorrents(torrents, append = false) {
             const contentDiv = document.getElementById('torrentsContent');
-            
+
             // Show ALL torrents at once (no pagination)
             window.allTorrents = torrents;
             window.displayedTorrents = torrents.length;
-            
+
             contentDiv.innerHTML = '<div class="torrents-list"></div>';
             const listDiv = contentDiv.querySelector('.torrents-list');
             
