@@ -644,12 +644,12 @@
                         <button class="episode-btn episode-btn-watch" onclick="watchCurrentEpisode()" style="flex: 1; justify-content: center; padding: 18px 25px; font-size: 1.1rem; border-radius: 25px;">
                             <i class="fas fa-play"></i> Смотреть
                         </button>
-                        <button class="episode-btn episode-btn-watch" onclick="selectTorrentForEpisode()" style="flex: 0 0 auto; justify-content: center; padding: 18px 20px; font-size: 1.1rem; border-radius: 25px; background: rgba(218, 165, 32, 0.5);" title="Выбрать другую раздачу">
-                            <i class="fas fa-download"></i>
+                        <button class="episode-btn episode-btn-watch" onclick="selectTorrentForEpisode()" style="flex: 0 0 auto; justify-content: center; padding: 18px 20px; font-size: 1.1rem; border-radius: 25px; background: rgba(218, 165, 32, 0.5);" title="Выбрать раздачу">
+                            <i class="fas fa-database"></i>
                         </button>
                     </div>
                     <div id="selectedTorrentInfo" style="margin-top: 10px; padding: 10px; background: rgba(0, 0, 0, 0.5); border-radius: 10px; display: none;">
-                        <p style="margin: 0; font-size: 0.9rem; color: #888;">Выбранная раздача:</p>
+                        <p style="margin: 0; font-size: 0.9rem; color: #888;">Раздача:</p>
                         <p id="selectedTorrentTitle" style="margin: 5px 0 0 0; color: var(--accent); font-size: 0.95rem;"></p>
                     </div>
                 </div>
@@ -1643,18 +1643,49 @@
 
             const season = currentEpisode.season_number;
             const episode = currentEpisode.episode_number;
-            const query = `${TV_TITLE} S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+            
+            // Try two search queries: specific episode and general series
+            const queries = [
+                `${TV_TITLE} S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`,
+                `${TV_TITLE} сезон ${season}`,
+                TV_TITLE
+            ];
 
             // Show loading
             showNotification('Поиск раздач...', 'info');
 
             try {
-                // Search torrents
-                const response = await fetch(`/api/torrents/search?q=${encodeURIComponent(query)}`);
-                const data = await response.json();
+                let allResults = [];
+                
+                // Try each query
+                for (const query of queries) {
+                    console.log(`[Torrent Search] Query: ${query}`);
+                    const response = await fetch(`/api/torrents/search?q=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.results && data.results.length > 0) {
+                        console.log(`[Torrent Search] Found ${data.results.length} results for: ${query}`);
+                        allResults = allResults.concat(data.results);
+                        
+                        // If we found results, stop searching
+                        if (allResults.length >= 10) break;
+                    }
+                }
+                
+                // Remove duplicates by magnet link
+                const uniqueResults = [];
+                const seenMagnets = new Set();
+                for (const result of allResults) {
+                    if (!seenMagnets.has(result.magnet)) {
+                        seenMagnets.add(result.magnet);
+                        uniqueResults.push(result);
+                    }
+                }
 
-                if (data.success && data.results && data.results.length > 0) {
-                    showTorrentSelectionModal(data.results, season, episode);
+                console.log(`[Torrent Search] Total unique results: ${uniqueResults.length}`);
+
+                if (uniqueResults.length > 0) {
+                    showTorrentSelectionModal(uniqueResults, season, episode);
                 } else {
                     showNotification('Раздачи не найдены', 'error');
                 }
