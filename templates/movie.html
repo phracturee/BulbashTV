@@ -737,20 +737,22 @@
             };
 
             return torrents.sort((a, b) => {
-                const aIsRutracker = a.tracker === 'RuTracker' || a.tracker === 'rutracker';
-                const bIsRutracker = b.tracker === 'RuTracker' || b.tracker === 'rutracker';
+                // Check for RuTracker (case insensitive, support variations)
+                const aTracker = (a.tracker || '').toLowerCase();
+                const bTracker = (b.tracker || '').toLowerCase();
+                const aIsRutracker = aTracker.includes('rutracker') || aTracker.includes('ru-tracker');
+                const bIsRutracker = bTracker.includes('rutracker') || bTracker.includes('ru-tracker');
 
                 // RuTracker first, then others
                 if (aIsRutracker && !bIsRutracker) return -1;
                 if (!aIsRutracker && bIsRutracker) return 1;
 
                 // Within same tracker group, sort by quality (high to low)
-                const aQuality = a.quality || '';
-                const bQuality = b.quality || '';
+                const aQuality = (a.quality || '').toLowerCase();
+                const bQuality = (b.quality || '').toLowerCase();
                 
                 // Extract quality value
                 const getQualityRank = (q) => {
-                    q = q.toLowerCase();
                     for (const [key, rank] of Object.entries(qualityRank)) {
                         if (q.includes(key.toLowerCase())) return rank;
                     }
@@ -764,8 +766,8 @@
                 if (aRank !== bRank) return bRank - aRank;
 
                 // If same quality, sort by seeds (more seeds first)
-                const aSeeds = a.seeds || 0;
-                const bSeeds = b.seeds || 0;
+                const aSeeds = parseInt(a.seeds) || 0;
+                const bSeeds = parseInt(b.seeds) || 0;
                 return bSeeds - aSeeds;
             });
         }
