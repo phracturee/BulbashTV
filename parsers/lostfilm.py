@@ -237,15 +237,15 @@ class LostFilmSpider(BaseSpider):
             torrent_data = resp.content
 
             # Parse torrent to get info hash
-            import bencoder
-            torrent = bencoder.decode(torrent_data)
-            
+            import bencodepy
+            torrent = bencodepy.decode(torrent_data)
+
             # Get info hash
-            info_hash = hashlib.sha1(bencoder.encode(torrent[b'info'])).hexdigest()
-            
+            info_hash = hashlib.sha1(bencodepy.encode(torrent[b'info'])).hexdigest()
+
             # Get name
             name = torrent[b'info'].get(b'name', b'Unknown').decode('utf-8', errors='ignore')
-            
+
             # Get size
             size = sum(torrent[b'info'].get(b'length', 0) for torrent in torrent.get(b'files', []))
             if not size:
