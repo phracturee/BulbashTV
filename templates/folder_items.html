@@ -39,7 +39,7 @@
         /* Folder action buttons (rename/delete) */
         .folder-actions {
             position: fixed;
-            top: 80px;  /* Below back button (15px + 50px + 15px gap) */
+            top: 80px;
             left: 15px;
             display: flex;
             flex-direction: column;
@@ -72,6 +72,50 @@
         .folder-action-btn:last-child:hover {
             background: rgba(255, 0, 0, 0.2);
             color: #ff4444;
+        }
+
+        /* Remove button on grid items */
+        .remove-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+            z-index: 10;
+        }
+
+        .grid-item-link:hover .remove-btn {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .remove-btn:hover {
+            background: rgba(255, 0, 0, 0.8) !important;
+            transform: scale(1.1);
+        }
+
+        .media-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: var(--accent);
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 600;
         }
 
         /* Modal styles */
@@ -197,7 +241,7 @@
             {% if folder['items'] %}
             <div class="grid-list">
                 {% for item in folder['items'] %}
-                {% set item_url = item.url if item.url else ('/movie/' ~ item.id|string if item.media_type == 'Фильм' else '/tv/' ~ item.id|string) %}
+                {% set item_url = item.url if item.url else ('/movie/' ~ item.id|string if (item.media_type == 'Фильм' or item.original_media_type == 'movie') else '/tv/' ~ item.id|string) %}
                 <a href="{{ item_url }}" class="grid-item-link" data-id="{{ item.id }}">
                     <div class="grid-item" >
                         <div class="grid-item-thumbnail">
@@ -211,7 +255,7 @@
                             <img src="https://placehold.co/200x300/333333/FFFFFF?text={{ item.title[:15] }}" alt="{{ item.title }}">
                             {% endif %}
                             {% if item.media_type %}
-                            <span class="media-badge">{{ item.media_type }}</span>
+                            <span class="media-badge">{{ item.media_type if item.media_type in ['Фильм', 'Сериал'] else ('Фильм' if item.original_media_type == 'movie' else 'Сериал') }}</span>
                             {% endif %}
                             {% if folder_id == 'watched' %}
                             <button class="remove-btn" onclick="event.preventDefault(); event.stopPropagation(); removeFromFolder('{{ folder_id }}', {{ item.id }})" title="Удалить из просмотренных">
@@ -246,7 +290,6 @@
                 <i class="fas fa-folder-open"></i>
                 <h2>Папка пуста</h2>
                 <p>В этой папке пока нет фильмов или сериалов</p>
-                <a href="/" class="btn-primary">Добавить контент</a>
             </div>
             {% endif %}
         </section>
@@ -254,32 +297,66 @@
 
     <!-- Modal for rename folder -->
     <div id="renameModal" class="modal" style="display: none;">
-        <div class="modal-content" style="background: #000000; border: 1px solid var(--accent); border-radius: 15px; padding: 30px; max-width: 500px; width: 90%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="color: var(--accent); margin: 0; font-size: 1.3rem;"><i class="fas fa-edit"></i> Переименовать папку</h3>
-                <button onclick="closeRenameModal()" style="background: none; color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='var(--accent)'" onmouseout="this.style.background='none';this.style.color='#fff'">
+        <div class="modal-content" style="background: #000000; border: 1px solid var(--accent); border-radius: 15px; padding: 30px; max-width: 450px; width: 90%; box-shadow: 0 0 30px rgba(218, 165, 32, 0.15);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h3 style="color: var(--accent); margin: 0; font-size: 1.3rem; font-weight: 600;">
+                    <i class="fas fa-edit" style="margin-right: 10px;"></i>Переименовать папку
+                </h3>
+                <button onclick="closeRenameModal()" style="background: transparent; color: #ffffff; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;" onmouseover="this.style.background='rgba(218, 165, 32, 0.15)';this.style.color='var(--accent)'" onmouseout="this.style.background='transparent';this.style.color='#ffffff'">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <input type="text" id="renameFolderName" placeholder="Название папки" maxlength="50" value="{{ title }}" style="width: 100%; padding: 15px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; color: var(--text-color); font-family: var(--font); font-size: 1rem; margin-bottom: 20px; box-sizing: border-box;">
-            <div class="modal-buttons" style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button onclick="submitRename('{{ folder_id }}')" class="btn-primary" style="background: var(--accent); color: #000; border: none; padding: 12px 30px; border-radius: 20px; cursor: pointer; transition: all 0.3s; font-weight: 600; width: 100%;">Сохранить</button>
+            <label for="renameFolderName" style="display: block; color: #888; font-size: 0.9rem; margin-bottom: 10px;">Название папки</label>
+            <input type="text" id="renameFolderName" placeholder="Название папки" maxlength="50" value="{{ title }}" style="width: 100%; padding: 14px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(218, 165, 32, 0.2); border-radius: 10px; color: var(--text-color); font-family: var(--font); font-size: 1rem; margin-bottom: 25px; box-sizing: border-box; transition: all 0.3s;" onfocus="this.style.borderColor='var(--accent)';this.style.background='rgba(218, 165, 32, 0.05)'" onblur="this.style.borderColor='rgba(218, 165, 32, 0.2)';this.style.background='rgba(255,255,255,0.03)'">
+            <button onclick="submitRename('{{ folder_id }}')" style="background: var(--accent); color: #000; border: none; padding: 14px 30px; border-radius: 10px; cursor: pointer; transition: all 0.3s; font-weight: 600; font-size: 0.95rem; width: 100%;" onmouseover="this.style.background='#ffb700';this.style.transform='scale(1.02)'" onmouseout="this.style.background='var(--accent)';this.style.transform='scale(1)'">
+                <i class="fas fa-save" style="margin-right: 8px;"></i>Сохранить
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal for delete confirmation -->
+    <div id="deleteConfirmModal" class="modal" style="display: none;">
+        <div class="modal-content" style="background: #000000; border: 1px solid var(--accent); border-radius: 15px; padding: 30px; max-width: 450px; width: 90%; box-shadow: 0 0 30px rgba(218, 165, 32, 0.15);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h3 style="color: #ff4444; margin: 0; font-size: 1.3rem; font-weight: 600;">
+                    <i class="fas fa-exclamation-triangle" style="margin-right: 10px;"></i>Удаление папки
+                </h3>
+                <button onclick="closeDeleteConfirm()" style="background: transparent; color: #ffffff; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;" onmouseover="this.style.background='rgba(255, 68, 68, 0.15)';this.style.color='#ff4444'" onmouseout="this.style.background='transparent';this.style.color='#ffffff'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <p style="color: var(--text-color); font-size: 1rem; margin-bottom: 30px; line-height: 1.5;">
+                Вы уверены, что хотите удалить эту папку?<br>
+                <span style="color: #888; font-size: 0.9rem;">Все фильмы будут удалены из папки.</span>
+            </p>
+            <div style="display: flex; gap: 12px;">
+                <button onclick="closeDeleteConfirm()" style="background: rgba(255,255,255,0.05); color: var(--text-color); border: 1px solid rgba(255,255,255,0.1); padding: 14px 24px; border-radius: 10px; cursor: pointer; transition: all 0.3s; font-weight: 600; font-size: 0.95rem; flex: 1;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">Отмена</button>
+                <button onclick="confirmDelete()" style="background: #ff4444; color: #ffffff; border: none; padding: 14px 24px; border-radius: 10px; cursor: pointer; transition: all 0.3s; font-weight: 600; font-size: 0.95rem; flex: 1;" onmouseover="this.style.background='#ff6666';this.style.transform='scale(1.02)'" onmouseout="this.style.background='#ff4444';this.style.transform='scale(1)'">
+                    <i class="fas fa-trash" style="margin-right: 8px;"></i>Удалить
+                </button>
             </div>
         </div>
     </div>
 
     <script>
+        // Close delete confirm modal on outside click
+        document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
+            if (e.target === this) closeDeleteConfirm();
+        });
+
         function removeFromFolder(folderId, itemId) {
             fetch(`/api/favorites/remove/${itemId}?folder_id=${folderId}`, { method: 'DELETE' })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        const item = document.querySelector(`.grid-item[data-id="${itemId}"]`);
-                        if (item) {
-                            item.remove();
+                        // Find the card link by data-id and remove it
+                        const cardLink = document.querySelector(`.grid-item-link[data-id="${itemId}"]`);
+                        if (cardLink) {
+                            cardLink.remove();
                         }
                         showNotification('Удалено из папки', 'success');
-                        
+
+                        // Check if grid is empty
                         const grid = document.querySelector('.grid-list');
                         if (grid && grid.children.length === 0) {
                             location.reload();
@@ -331,15 +408,28 @@
         }
 
         function deleteFolder(folderId) {
-            if (!confirm('Удалить эту папку? Все фильмы будут удалены из папки.')) {
-                return;
-            }
+            showDeleteConfirm(folderId);
+        }
+
+        function showDeleteConfirm(folderId) {
+            document.getElementById('deleteConfirmModal').style.display = 'flex';
+            document.getElementById('deleteConfirmModal').dataset.folderId = folderId;
+        }
+
+        function closeDeleteConfirm() {
+            document.getElementById('deleteConfirmModal').style.display = 'none';
+        }
+
+        function confirmDelete() {
+            const folderId = document.getElementById('deleteConfirmModal').dataset.folderId;
+            if (!folderId) return;
 
             fetch(`/api/favorites/folders/${folderId}`, { method: 'DELETE' })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         showNotification('Папка удалена', 'success');
+                        closeDeleteConfirm();
                         setTimeout(() => window.location.href = '/favorites', 500);
                     } else {
                         showNotification(data.message || 'Ошибка', 'error');

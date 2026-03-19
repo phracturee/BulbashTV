@@ -421,7 +421,7 @@ class TorrentManager:
                 "media_type": media_type,
                 "tmdb_id": tmdb_id,
                 "timestamp": time.time(),
-                "date": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "date": time.strftime("%d.%m.%Y %H:%M"),
             })
 
             history = history[:50]

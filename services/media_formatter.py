@@ -84,7 +84,7 @@ class ImageCache:
     def get_image_url(
         self, tmdb_path: Optional[str], size: str = "w500", is_main: bool = False
     ) -> Optional[str]:
-        """Get image URL - local for main movie, proxy for others"""
+        """Get image URL - direct TMDB URL"""
         if not tmdb_path:
             return None
 
@@ -93,9 +93,8 @@ class ImageCache:
             if local:
                 return local
 
-        # Use proxy URL to avoid CORS issues
-        tmdb_url = f"https://image.tmdb.org/t/p/{size}{tmdb_path}"
-        return f"/api/image?url={tmdb_url}"
+        # Use direct TMDB URL
+        return f"https://image.tmdb.org/t/p/{size}{tmdb_path}"
 
 
 class MediaFormatter:

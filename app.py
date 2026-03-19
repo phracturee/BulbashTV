@@ -178,6 +178,14 @@ class BulbashTVApp:
         sort_by = request.args.get("sort", "popularity.desc")
         genres = self.tmdb_client.get_genres("movie")
 
+        # Get selected genre name
+        selected_genre_name = "Все жанры"
+        if genre:
+            for g in genres:
+                if str(g["id"]) == str(genre):
+                    selected_genre_name = g["name"]
+                    break
+
         # Load 3 pages at once (60 items)
         all_movies = []
         for page in range(1, 4):
@@ -189,9 +197,9 @@ class BulbashTVApp:
         formatted_movies = [
             self.media_formatter.format_movie(m) for m in all_movies
         ]
-        
-        # Filter out watched items
-        formatted_movies = [m for m in formatted_movies if not m.get('is_watched')]
+
+        # Не фильтруем просмотренные - показываем все
+        # formatted_movies = [m for m in formatted_movies if not m.get('is_watched')]
 
         return render_template(
             "category.html",
@@ -200,6 +208,7 @@ class BulbashTVApp:
             category="movies",
             genres=genres,
             selected_genre=genre,
+            selected_genre_name=selected_genre_name,
             sort_by=sort_by,
             current_page=3,
             favorites=self.favorites_manager.to_dict(),
@@ -211,6 +220,14 @@ class BulbashTVApp:
         sort_by = request.args.get("sort", "popularity.desc")
         genres = self.tmdb_client.get_genres("tv")
 
+        # Get selected genre name
+        selected_genre_name = "Все жанры"
+        if genre:
+            for g in genres:
+                if str(g["id"]) == str(genre):
+                    selected_genre_name = g["name"]
+                    break
+
         # Load 3 pages at once (60 items)
         all_shows = []
         for page in range(1, 4):
@@ -220,9 +237,9 @@ class BulbashTVApp:
             all_shows.extend(shows)
 
         formatted_shows = [self.media_formatter.format_tv_show(s) for s in all_shows]
-        
-        # Filter out watched items
-        formatted_shows = [s for s in formatted_shows if not s.get('is_watched')]
+
+        # Не фильтруем просмотренные - показываем все
+        # formatted_shows = [s for s in formatted_shows if not s.get('is_watched')]
 
         return render_template(
             "category.html",
@@ -231,6 +248,7 @@ class BulbashTVApp:
             category="tv-shows",
             genres=genres,
             selected_genre=genre,
+            selected_genre_name=selected_genre_name,
             sort_by=sort_by,
             current_page=3,
             favorites=self.favorites_manager.to_dict(),
@@ -307,10 +325,20 @@ class BulbashTVApp:
                 folders=self.favorites_manager.to_dict(),
                 error="Папка не найдена",
             )
+        
+        # Sort items by date added (newest first) if timestamp exists
+        folder_dict = folder.to_dict()
+        if folder_dict.get('items'):
+            folder_dict['items'] = sorted(
+                folder_dict['items'],
+                key=lambda x: x.get('timestamp', 0),
+                reverse=True  # Newest first
+            )
+        
         return render_template(
             "folder_items.html",
             title=folder.name,
-            folder=folder.to_dict(),
+            folder=folder_dict,
             folder_id=folder_id,
             favorites=self.favorites_manager.to_dict(),
         )
@@ -377,6 +405,9 @@ class BulbashTVApp:
                 'media_type': display_media_type,
                 'tmdb_id': tmdb_id,
                 'url': f"/movie/{tmdb_id}" if media_type == 'movie' else f"/tv/{tmdb_id}",
+                'vote_average': tmdb_data.get('vote_average', 0) if tmdb_data else first_result.get('vote_average', 0),
+                'overview': tmdb_data.get('overview', '') if tmdb_data else first_result.get('overview', ''),
+                'release_date': tmdb_data.get('release_date') if tmdb_data else (tmdb_data.get('first_air_date') if tmdb_data else first_result.get('release_date') or first_result.get('first_air_date', '')),
             }
             enriched_history.append(enriched_item)
 

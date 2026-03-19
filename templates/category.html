@@ -41,7 +41,7 @@
             display: flex;
             gap: 15px;
             margin-bottom: 30px;
-            padding: 15px 0;  /* Убрал фон и padding */
+            padding: 15px 0;
             flex-wrap: wrap;
         }
 
@@ -60,25 +60,109 @@
         }
 
         .filter-group select {
+            display: none;
+        }
+
+        /* Custom dropdown */
+        .custom-select {
+            position: relative;
+            min-width: 180px;
+        }
+
+        .custom-select-trigger {
             padding: 10px 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: #000000;
+            border: 1px solid rgba(218, 165, 32, 0.3);
             border-radius: 25px;
             color: var(--text-color);
             font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.3s;
-            min-width: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
         }
 
-        .filter-group select:hover {
+        .custom-select-trigger:hover {
             border-color: var(--accent);
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(218, 165, 32, 0.05);
         }
 
-        .filter-group select:focus {
-            outline: none;
+        .custom-select-trigger.active {
             border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(218, 165, 32, 0.2);
+        }
+
+        .custom-select-trigger i {
+            font-size: 0.8rem;
+            transition: transform 0.3s;
+        }
+
+        .custom-select-trigger.active i {
+            transform: rotate(180deg);
+        }
+
+        .custom-select-options {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: #000000;
+            border: 1px solid rgba(218, 165, 32, 0.3);
+            border-radius: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .custom-select-options.active {
+            display: block;
+        }
+
+        .custom-select-option {
+            padding: 12px 20px;
+            color: var(--text-color);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-bottom: 1px solid rgba(218, 165, 32, 0.1);
+        }
+
+        .custom-select-option:last-child {
+            border-bottom: none;
+        }
+
+        .custom-select-option:hover {
+            background: rgba(218, 165, 32, 0.15);
+            color: var(--accent);
+        }
+
+        .custom-select-option.selected {
+            background: rgba(218, 165, 32, 0.2);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* Custom scrollbar for dropdown */
+        .custom-select-options::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-select-options::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 3px;
+        }
+
+        .custom-select-options::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 3px;
+        }
+
+        .custom-select-options::-webkit-scrollbar-thumb:hover {
+            background: #ffb700;
         }
 
         /* Grid items - original style */
@@ -143,23 +227,57 @@
         <div class="filters-bar">
             <div class="filter-group">
                 <label><i class="fas fa-filter"></i> Жанр:</label>
-                <select id="genre-filter" onchange="applyFilters()">
-                    <option value="">Все жанры</option>
-                    {% for genre in genres %}
-                    <option value="{{ genre.id }}" {% if selected_genre == genre.id|string %}selected{% endif %}>{{ genre.name }}</option>
-                    {% endfor %}
-                </select>
+                <div class="custom-select" data-type="genre">
+                    <div class="custom-select-trigger" onclick="toggleCustomSelect(this)">
+                        <span id="genre-label">{{ selected_genre_name if selected_genre_name else 'Все жанры' }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="custom-select-options">
+                        <div class="custom-select-option {% if not selected_genre %}selected{% endif %}" data-value="" onclick="selectOption(this, 'genre')">Все жанры</div>
+                        {% for genre in genres %}
+                        <div class="custom-select-option {% if selected_genre == genre.id|string %}selected{% endif %}" data-value="{{ genre.id }}" onclick="selectOption(this, 'genre')">{{ genre.name }}</div>
+                        {% endfor %}
+                    </div>
+                    <select id="genre-filter" onchange="applyFilters()" style="display: none;">
+                        <option value="">Все жанры</option>
+                        {% for genre in genres %}
+                        <option value="{{ genre.id }}" {% if selected_genre == genre.id|string %}selected{% endif %}>{{ genre.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
             <div class="filter-group">
                 <label><i class="fas fa-sort"></i> Сортировка:</label>
-                <select id="sort-filter" onchange="applyFilters()">
-                    <option value="popularity.desc" {% if sort_by == 'popularity.desc' %}selected{% endif %}>Популярность ↓</option>
-                    <option value="popularity.asc" {% if sort_by == 'popularity.asc' %}selected{% endif %}>Популярность ↑</option>
-                    <option value="vote_average.desc" {% if sort_by == 'vote_average.desc' %}selected{% endif %}>Рейтинг ↓</option>
-                    <option value="vote_average.asc" {% if sort_by == 'vote_average.asc' %}selected{% endif %}>Рейтинг ↑</option>
-                    <option value="release_date.desc" {% if sort_by == 'release_date.desc' %}selected{% endif %}>Дата выхода ↓</option>
-                    <option value="release_date.asc" {% if sort_by == 'release_date.asc' %}selected{% endif %}>Дата выхода ↑</option>
-                </select>
+                <div class="custom-select" data-type="sort">
+                    <div class="custom-select-trigger" onclick="toggleCustomSelect(this)">
+                        <span id="sort-label">
+                            {% if sort_by == 'popularity.desc' %}Популярность ↓
+                            {% elif sort_by == 'popularity.asc' %}Популярность ↑
+                            {% elif sort_by == 'vote_average.desc' %}Рейтинг ↓
+                            {% elif sort_by == 'vote_average.asc' %}Рейтинг ↑
+                            {% elif sort_by == 'release_date.desc' %}Дата выхода ↓
+                            {% elif sort_by == 'release_date.asc' %}Дата выхода ↑
+                            {% else %}Популярность ↓{% endif %}
+                        </span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="custom-select-options">
+                        <div class="custom-select-option {% if sort_by == 'popularity.desc' %}selected{% endif %}" data-value="popularity.desc" onclick="selectOption(this, 'sort')">Популярность ↓</div>
+                        <div class="custom-select-option {% if sort_by == 'popularity.asc' %}selected{% endif %}" data-value="popularity.asc" onclick="selectOption(this, 'sort')">Популярность ↑</div>
+                        <div class="custom-select-option {% if sort_by == 'vote_average.desc' %}selected{% endif %}" data-value="vote_average.desc" onclick="selectOption(this, 'sort')">Рейтинг ↓</div>
+                        <div class="custom-select-option {% if sort_by == 'vote_average.asc' %}selected{% endif %}" data-value="vote_average.asc" onclick="selectOption(this, 'sort')">Рейтинг ↑</div>
+                        <div class="custom-select-option {% if sort_by == 'release_date.desc' %}selected{% endif %}" data-value="release_date.desc" onclick="selectOption(this, 'sort')">Дата выхода ↓</div>
+                        <div class="custom-select-option {% if sort_by == 'release_date.asc' %}selected{% endif %}" data-value="release_date.asc" onclick="selectOption(this, 'sort')">Дата выхода ↑</div>
+                    </div>
+                    <select id="sort-filter" onchange="applyFilters()" style="display: none;">
+                        <option value="popularity.desc" {% if sort_by == 'popularity.desc' %}selected{% endif %}>Популярность ↓</option>
+                        <option value="popularity.asc" {% if sort_by == 'popularity.asc' %}selected{% endif %}>Популярность ↑</option>
+                        <option value="vote_average.desc" {% if sort_by == 'vote_average.desc' %}selected{% endif %}>Рейтинг ↓</option>
+                        <option value="vote_average.asc" {% if sort_by == 'vote_average.asc' %}selected{% endif %}>Рейтинг ↑</option>
+                        <option value="release_date.desc" {% if sort_by == 'release_date.desc' %}selected{% endif %}>Дата выхода ↓</option>
+                        <option value="release_date.asc" {% if sort_by == 'release_date.asc' %}selected{% endif %}>Дата выхода ↑</option>
+                    </select>
+                </div>
             </div>
         </div>
         {% endif %}
@@ -307,12 +425,13 @@
                 const releaseDate = item.release_date || item.first_air_date || '';
                 const isFav = item.is_favorite || false;
                 const isWatched = item.is_watched || false;
+                const mediaTypeBadge = item.media_type || (item.original_media_type === 'movie' ? 'Фильм' : 'Сериал');
 
                 const html = `
                     <div class="grid-item" data-id="${item.id}" onclick="openItem(${item.id})" style="cursor: pointer;">
                         <div class="grid-item-thumbnail">
                             ${posterPath ? `<img src="${posterPath}" alt="${item.title}">` : `<img src="https://placehold.co/200x300/333333/FFFFFF?text=${item.title.substring(0, 15)}" alt="${item.title}">`}
-                            ${item.media_type ? `<span class="media-badge">${item.media_type}</span>` : ''}
+                            ${mediaTypeBadge ? `<span class="media-badge">${mediaTypeBadge}</span>` : ''}
                             <button class="favorite-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${item.id})" title="${isFav ? 'В избранном' : 'В избранное'}">
                                 <i class="${isFav ? 'fas' : 'far'} fa-heart"></i>
                             </button>
@@ -332,8 +451,11 @@
                 `;
                 grid.insertAdjacentHTML('beforeend', html);
 
-                // Store in itemsData
-                itemsData[item.id] = item;
+                // Store in itemsData - ensure original_media_type is saved
+                itemsData[item.id] = {
+                    ...item,
+                    original_media_type: item.original_media_type || (item.media_type === 'Фильм' ? 'movie' : 'tv')
+                };
             });
         }
         
@@ -607,7 +729,15 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            ...item,
+                            id: item.id,
+                            title: item.title,
+                            poster_path: item.poster_path,
+                            media_type: item.media_type,
+                            original_media_type: item.original_media_type,
+                            url: item.url,
+                            vote_average: item.vote_average,
+                            release_date: item.release_date,
+                            overview: item.overview,
                             folder_id: 'watched'
                         })
                     })
@@ -647,6 +777,60 @@
             const sort = document.getElementById('sort-filter').value;
             window.location.href = `/${category}?genre=${genre}&sort=${sort}`;
         }
+
+        // Custom select functions
+        function toggleCustomSelect(trigger) {
+            const customSelect = trigger.parentElement;
+            const options = customSelect.querySelector('.custom-select-options');
+            
+            // Close all other selects
+            document.querySelectorAll('.custom-select-options').forEach(opt => {
+                if (opt !== options) {
+                    opt.classList.remove('active');
+                    opt.parentElement.querySelector('.custom-select-trigger').classList.remove('active');
+                }
+            });
+            
+            // Toggle current select
+            trigger.classList.toggle('active');
+            options.classList.toggle('active');
+        }
+
+        function selectOption(option, type) {
+            const customSelect = option.parentElement.parentElement;
+            const trigger = customSelect.querySelector('.custom-select-trigger');
+            const triggerLabel = trigger.querySelector('span');
+            const select = customSelect.querySelector(`#${type}-filter`);
+            
+            // Update selected option
+            customSelect.querySelectorAll('.custom-select-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            option.classList.add('selected');
+            
+            // Update trigger text
+            triggerLabel.textContent = option.textContent;
+            
+            // Update hidden select value
+            select.value = option.dataset.value;
+            
+            // Close dropdown
+            trigger.classList.remove('active');
+            customSelect.querySelector('.custom-select-options').classList.remove('active');
+            
+            // Trigger change event
+            select.dispatchEvent(new Event('change'));
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.custom-select')) {
+                document.querySelectorAll('.custom-select-options').forEach(opt => {
+                    opt.classList.remove('active');
+                    opt.parentElement.querySelector('.custom-select-trigger').classList.remove('active');
+                });
+            }
+        });
     </script>
     <script src="{{ url_for('static', filename='js/favorites-modal.js') }}"></script>
 </body>

@@ -4,6 +4,7 @@ Data managers for persistent storage (favorites, history)
 
 import os
 import json
+import time
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 
@@ -122,7 +123,13 @@ class FavoritesManager(DataManager):
         if any(i["id"] == item["id"] for i in folder.items):
             return False, "Already in this folder"
 
-        folder.items.append(item)
+        # Add timestamp for sorting (newest first)
+        item_with_timestamp = {
+            **item,
+            'timestamp': time.time()
+        }
+
+        folder.items.append(item_with_timestamp)
         self.save()
         return True, None
 
