@@ -640,9 +640,18 @@
                 
                 <!-- Watch button - separate panel -->
                 <div id="watchButtonContainer" style="display: none; margin-top: 20px;">
-                    <button class="episode-btn episode-btn-watch" onclick="watchCurrentEpisode()" style="width: 100%; justify-content: center; padding: 18px 25px; font-size: 1.1rem; border-radius: 25px;">
-                        <i class="fas fa-play"></i> Смотреть
-                    </button>
+                    <div style="display: flex; gap: 15px;">
+                        <button class="episode-btn episode-btn-watch" onclick="watchCurrentEpisode()" style="flex: 1; justify-content: center; padding: 18px 25px; font-size: 1.1rem; border-radius: 25px;">
+                            <i class="fas fa-play"></i> Смотреть
+                        </button>
+                        <button class="episode-btn episode-btn-watch" onclick="selectTorrentForEpisode()" style="flex: 0 0 auto; justify-content: center; padding: 18px 20px; font-size: 1.1rem; border-radius: 25px; background: rgba(218, 165, 32, 0.5);" title="Выбрать другую раздачу">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                    <div id="selectedTorrentInfo" style="margin-top: 10px; padding: 10px; background: rgba(0, 0, 0, 0.5); border-radius: 10px; display: none;">
+                        <p style="margin: 0; font-size: 0.9rem; color: #888;">Выбранная раздача:</p>
+                        <p id="selectedTorrentTitle" style="margin: 5px 0 0 0; color: var(--accent); font-size: 0.95rem;"></p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -897,6 +906,9 @@
                 currentEpisode = episodes[index];
                 console.log(`[TV] Выбрано: S${currentEpisode.season_number}E${currentEpisode.episode_number}`);
                 showEpisodeInfo(episodes[index], seasonNumber);
+                
+                // Load selected torrent for this episode
+                loadSelectedTorrentForEpisode(currentEpisode.season_number, currentEpisode.episode_number);
             }
         }
 
@@ -1615,6 +1627,157 @@
                 watchEpisode(currentEpisode.season_number, currentEpisode.episode_number);
             } else {
                 showNotification('Выберите серию сначала', 'error');
+            }
+        }
+
+        // ==================== Torrent Selection ====================
+
+        let selectedTorrent = null; // Store selected torrent for current episode
+
+        // Select torrent for episode
+        async function selectTorrentForEpisode() {
+            if (!currentEpisode) {
+                showNotification('Выберите серию сначала', 'error');
+                return;
+            }
+
+            const season = currentEpisode.season_number;
+            const episode = currentEpisode.episode_number;
+            const query = `${TV_TITLE} S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`;
+
+            // Show loading
+            showNotification('Поиск раздач...', 'info');
+
+            try {
+                // Search torrents
+                const response = await fetch(`/api/torrents/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (data.success && data.results && data.results.length > 0) {
+                    showTorrentSelectionModal(data.results, season, episode);
+                } else {
+                    showNotification('Раздачи не найдены', 'error');
+                }
+            } catch (error) {
+                console.error('Error searching torrents:', error);
+                showNotification('Ошибка поиска раздач', 'error');
+            }
+        }
+
+        // Show torrent selection modal
+        function showTorrentSelectionModal(torrents, season, episode) {
+            // Sort torrents (RuTracker first, by quality)
+            torrents.sort((a, b) => {
+                const aTracker = (a.tracker || '').toLowerCase();
+                const bTracker = (b.tracker || '').toLowerCase();
+                const aIsRutracker = aTracker.includes('rutracker');
+                const bIsRutracker = bTracker.includes('rutracker');
+
+                if (aIsRutracker && !bIsRutracker) return -1;
+                if (!aIsRutracker && bIsRutracker) return 1;
+
+                // Same quality, sort by seeds
+                return (parseInt(b.seeds) || 0) - (parseInt(a.seeds) || 0);
+            });
+
+            const modal = document.createElement('div');
+            modal.id = 'torrentSelectModal';
+            modal.className = 'modal';
+            modal.style.cssText = 'display: flex; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 10000;';
+            modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+            const content = document.createElement('div');
+            content.style.cssText = 'background: #000000; border: 1px solid var(--accent); border-radius: 15px; padding: 30px; max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto;';
+
+            // Header
+            const header = document.createElement('div');
+            header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(218, 165, 32, 0.2);';
+            header.innerHTML = `
+                <h3 style="color: var(--accent); margin: 0; font-size: 1.3rem;">
+                    <i class="fas fa-download"></i> Выберите раздачу для S${season}E${episode}
+                </h3>
+                <button onclick="document.getElementById('torrentSelectModal').remove()" style="background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1); width: 36px; height: 36px; border-radius: 50%; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;" onmouseover="this.style.background='rgba(218, 165, 32, 0.2)';this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.borderColor='rgba(255,255,255,0.1)';this.style.color='#fff'">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            content.appendChild(header);
+
+            // Torrents list
+            const list = document.createElement('div');
+            list.style.cssText = 'display: flex; flex-direction: column; gap: 10px;';
+
+            torrents.forEach(torrent => {
+                const item = document.createElement('div');
+                item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #000000; border: 1px solid rgba(218, 165, 32, 0.3); border-radius: 10px; cursor: pointer; transition: all 0.3s;';
+                item.onmouseover = () => { item.style.borderColor = 'var(--accent)'; item.style.background = 'rgba(218, 165, 32, 0.05)'; };
+                item.onmouseout = () => { item.style.borderColor = 'rgba(218, 165, 32, 0.3)'; item.style.background = '#000000'; };
+                item.onclick = () => {
+                    selectTorrentForEpisodeHandler(torrent, season, episode);
+                    modal.remove();
+                };
+
+                const isRutracker = (torrent.tracker || '').toLowerCase().includes('rutracker');
+                const badgeStyle = isRutracker ? 'background: var(--accent); color: #000;' : 'background: rgba(255,255,255,0.1); color: var(--text-color);';
+
+                item.innerHTML = `
+                    <div style="flex: 1;">
+                        <div style="color: var(--text-color); font-size: 1rem; margin-bottom: 5px;">${escapeHtml(torrent.title)}</div>
+                        <div style="display: flex; gap: 10px; align-items: center; font-size: 0.85rem;">
+                            <span style="${badgeStyle} padding: 3px 10px; border-radius: 15px; font-weight: 600;">${escapeHtml(torrent.tracker)}</span>
+                            <span style="color: var(--accent);">${escapeHtml(torrent.quality || 'N/A')}</span>
+                            <span style="color: #4CAF50;"><i class="fas fa-arrow-up"></i> ${torrent.seeds || 0}</span>
+                            <span style="color: #888;">${escapeHtml(torrent.size || 'N/A')}</span>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color: var(--accent); font-size: 1.2rem;"></i>
+                `;
+
+                list.appendChild(item);
+            });
+
+            content.appendChild(list);
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+        }
+
+        // Handle torrent selection
+        function selectTorrentForEpisodeHandler(torrent, season, episode) {
+            selectedTorrent = torrent;
+
+            // Save to localStorage
+            const key = `torrent_${TV_ID}_S${season}E${episode}`;
+            localStorage.setItem(key, JSON.stringify(torrent));
+
+            // Update UI
+            const infoDiv = document.getElementById('selectedTorrentInfo');
+            const titleEl = document.getElementById('selectedTorrentTitle');
+
+            if (infoDiv && titleEl) {
+                infoDiv.style.display = 'block';
+                titleEl.textContent = `${torrent.title} (${torrent.tracker}, ${torrent.quality || 'N/A'})`;
+            }
+
+            showNotification('Раздача выбрана!', 'success');
+        }
+
+        // Load selected torrent for current episode
+        function loadSelectedTorrentForEpisode(season, episode) {
+            const key = `torrent_${TV_ID}_S${season}E${episode}`;
+            const saved = localStorage.getItem(key);
+
+            if (saved) {
+                try {
+                    selectedTorrent = JSON.parse(saved);
+                    const infoDiv = document.getElementById('selectedTorrentInfo');
+                    const titleEl = document.getElementById('selectedTorrentTitle');
+
+                    if (infoDiv && titleEl) {
+                        infoDiv.style.display = 'block';
+                        titleEl.textContent = `${selectedTorrent.title} (${selectedTorrent.tracker}, ${selectedTorrent.quality || 'N/A'})`;
+                    }
+                } catch (e) {
+                    console.error('Error loading selected torrent:', e);
+                }
             }
         }
 
