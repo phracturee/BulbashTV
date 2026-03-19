@@ -981,9 +981,23 @@
 
         // Watch episode - search series and start streaming
         function watchEpisode(season, episode) {
+            // Check if user has selected a specific torrent
+            if (selectedTorrent) {
+                console.log(`\n${'='.repeat(60)}`);
+                console.log(`[TV] ========== USING SELECTED TORRENT ==========`);
+                console.log(`[TV] Torrent: ${selectedTorrent.title}`);
+                console.log(`[TV] Tracker: ${selectedTorrent.tracker}`);
+                console.log(`[TV] Magnet: ${selectedTorrent.magnet.substring(0, 50)}...`);
+                console.log(`${'='.repeat(60)}\n`);
+                
+                // Use selected torrent directly
+                startSeriesStreaming(selectedTorrent, season, episode);
+                return;
+            }
+
             // Format: "Russian Name / English Name / Season: X"
             let seriesName = TV_TITLE;
-            
+
             // If title contains both Russian and English (separated by /)
             if (TV_TITLE.includes('/')) {
                 const parts = TV_TITLE.split('/');
