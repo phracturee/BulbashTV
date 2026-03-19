@@ -644,12 +644,12 @@
                         <button class="episode-btn episode-btn-watch" onclick="watchCurrentEpisode()" style="flex: 1; justify-content: center; padding: 18px 25px; font-size: 1.1rem; border-radius: 25px;">
                             <i class="fas fa-play"></i> Смотреть
                         </button>
-                        <button class="episode-btn episode-btn-watch" onclick="selectTorrentForEpisode()" style="flex: 0 0 auto; justify-content: center; padding: 18px 20px; font-size: 1.1rem; border-radius: 25px; background: rgba(218, 165, 32, 0.5);" title="Выбрать раздачу">
+                        <button class="episode-btn episode-btn-watch" onclick="selectTorrentForEpisode()" style="width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 1.1rem; border-radius: 50%; background: rgba(218, 165, 32, 0.5);" title="Выбрать раздачу">
                             <i class="fas fa-database"></i>
                         </button>
                     </div>
                     <div id="selectedTorrentInfo" style="margin-top: 10px; padding: 10px; background: rgba(0, 0, 0, 0.5); border-radius: 10px; display: none;">
-                        <p style="margin: 0; font-size: 0.9rem; color: #888;">Раздача:</p>
+                        <p style="margin: 0; font-size: 0.9rem; color: #888;">Раздача для сезона <span id="selectedTorrentSeason"></span>:</p>
                         <p id="selectedTorrentTitle" style="margin: 5px 0 0 0; color: var(--accent); font-size: 0.95rem;"></p>
                     </div>
                 </div>
@@ -681,6 +681,7 @@
         // Load seasons on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadWatchedEpisodes();
+            loadSelectedTorrents();
             loadSeasons();
         });
 
@@ -1110,11 +1111,20 @@
             console.log(`[TV] ========== START STREAMING ==========`);
             console.log(`[TV] Looking for file pattern: ${episodePattern}`);
             console.log(`[TV] Magnet: ${torrent.magnet.substring(0, 50)}...`);
+            console.log(`[TV] Torrent: ${torrent.title}`);
             console.log(`${'='.repeat(60)}\n`);
 
             showNotification(`Запуск серии ${episodePattern}...`, 'info');
-            
+
+            // Check if overlay exists, if not create it
+            let overlay = document.getElementById('seriesLoadingOverlay');
+            if (!overlay) {
+                console.log('[TV] Creating loading overlay...');
+                showSeriesLoadingOverlay(`${TV_TITLE} Сезон ${season}`, season, episode);
+            }
+
             // Update overlay to streaming stage
+            console.log('[TV] Updating overlay to streaming stage...');
             updateLoadingOverlay('streaming', { pattern: episodePattern, torrent: torrent });
 
             fetch('/api/torrent/start', {
@@ -1137,9 +1147,11 @@
 
                 if (data.success) {
                     console.log(`[TV] Серия запущена! Video URL: ${data.video_url}`);
+                    showNotification('Серия запущена!', 'success');
                 } else {
                     console.error(`[TV] Ошибка запуска:`, data.message);
                     showNotification(data.message || 'Ошибка запуска', 'error');
+                    hideLoadingOverlay();
                 }
             })
             .catch(err => {
@@ -1646,7 +1658,26 @@
 
         // ==================== Torrent Selection ====================
 
-        let selectedTorrent = null; // Store selected torrent for current episode
+        let selectedTorrent = null; // Store selected torrent for current season
+        let selectedTorrents = {}; // Map: season -> torrent
+
+        // Load selected torrents from localStorage
+        function loadSelectedTorrents() {
+            const saved = localStorage.getItem(`tv_torrents_${TV_ID}`);
+            if (saved) {
+                try {
+                    selectedTorrents = JSON.parse(saved);
+                } catch (e) {
+                    console.error('Error loading selected torrents:', e);
+                    selectedTorrents = {};
+                }
+            }
+        }
+
+        // Save selected torrents to localStorage
+        function saveSelectedTorrents() {
+            localStorage.setItem(`tv_torrents_${TV_ID}`, JSON.stringify(selectedTorrents));
+        }
 
         // Select torrent for episode
         async function selectTorrentForEpisode() {
@@ -1787,42 +1818,46 @@
 
         // Handle torrent selection
         function selectTorrentForEpisodeHandler(torrent, season, episode) {
-            selectedTorrent = torrent;
-
-            // Save to localStorage
-            const key = `torrent_${TV_ID}_S${season}E${episode}`;
-            localStorage.setItem(key, JSON.stringify(torrent));
+            // Save to season-specific storage
+            selectedTorrents[season] = torrent;
+            selectedTorrent = torrent; // Also set current
+            saveSelectedTorrents();
 
             // Update UI
             const infoDiv = document.getElementById('selectedTorrentInfo');
             const titleEl = document.getElementById('selectedTorrentTitle');
+            const seasonEl = document.getElementById('selectedTorrentSeason');
 
             if (infoDiv && titleEl) {
                 infoDiv.style.display = 'block';
                 titleEl.textContent = `${torrent.title} (${torrent.tracker}, ${torrent.quality || 'N/A'})`;
+                if (seasonEl) seasonEl.textContent = season;
             }
 
             showNotification('Раздача выбрана!', 'success');
         }
 
-        // Load selected torrent for current episode
+        // Load selected torrent for current season
         function loadSelectedTorrentForEpisode(season, episode) {
-            const key = `torrent_${TV_ID}_S${season}E${episode}`;
-            const saved = localStorage.getItem(key);
+            // Load from season-specific storage
+            const torrent = selectedTorrents[season];
 
-            if (saved) {
-                try {
-                    selectedTorrent = JSON.parse(saved);
-                    const infoDiv = document.getElementById('selectedTorrentInfo');
-                    const titleEl = document.getElementById('selectedTorrentTitle');
+            if (torrent) {
+                selectedTorrent = torrent;
+                const infoDiv = document.getElementById('selectedTorrentInfo');
+                const titleEl = document.getElementById('selectedTorrentTitle');
+                const seasonEl = document.getElementById('selectedTorrentSeason');
 
-                    if (infoDiv && titleEl) {
-                        infoDiv.style.display = 'block';
-                        titleEl.textContent = `${selectedTorrent.title} (${selectedTorrent.tracker}, ${selectedTorrent.quality || 'N/A'})`;
-                    }
-                } catch (e) {
-                    console.error('Error loading selected torrent:', e);
+                if (infoDiv && titleEl) {
+                    infoDiv.style.display = 'block';
+                    titleEl.textContent = `${torrent.title} (${torrent.tracker}, ${torrent.quality || 'N/A'})`;
+                    if (seasonEl) seasonEl.textContent = season;
                 }
+            } else {
+                // No torrent selected for this season
+                selectedTorrent = null;
+                const infoDiv = document.getElementById('selectedTorrentInfo');
+                if (infoDiv) infoDiv.style.display = 'none';
             }
         }
 
