@@ -1052,34 +1052,53 @@
                     
                     // Collect all unique seasons from ALL results
                     const allSeasons = new Set();
-                    const seasonRangePattern = /сезон[:\s]*(\d+)\s*-\s*(\d+)/i;
-                    const seasonSinglePattern = /сезон[:\s]*(\d+)/i;
+                    // More flexible patterns to match various formats
+                    const seasonRangePatterns = [
+                        /сезон[:\s]*(\d+)\s*-\s*(\d+)/i,        // "Сезон: 1-15" or "Сезон 1-15"
+                        /сезон[:\s]*(\d+)\s*серии[:\s]*(\d+)/i, // "Сезон 2 серии 1-22"
+                        /(\d+)\s*-\s*(\d+)\s*серии/i,           // "1-22 серии"
+                        /season[:\s]*(\d+)\s*-\s*(\d+)/i,       // "Season 1-15"
+                    ];
+                    const seasonSinglePatterns = [
+                        /сезон[:\s]*(\d+)(?!\s*-\s*\d)/i,       // "Сезон: 2" but not "Сезон: 1-15"
+                        /season[:\s]*(\d+)(?!\s*-\s*\d)/i,      // "Season: 2"
+                    ];
 
                     data.results.forEach(r => {
                         const titleLower = r.title.toLowerCase();
                         
-                        // Debug: log titles that contain "сезон"
-                        if (titleLower.includes('сезон')) {
-                            console.log(`[TV] Found season in: ${r.title}`);
+                        // Debug: log titles that contain "сезон" or "season"
+                        if (titleLower.includes('сезон') || titleLower.includes('season')) {
+                            console.log(`[TV] Found season title: ${r.title}`);
                         }
 
-                        // Check for season range (e.g., "Сезон: 1-5")
-                        let match = titleLower.match(seasonRangePattern);
-                        if (match) {
-                            const start = parseInt(match[1]);
-                            const end = parseInt(match[2]);
-                            console.log(`[TV] Season range found: ${start}-${end} in "${r.title}"`);
-                            for (let i = start; i <= end; i++) {
-                                allSeasons.add(i);
+                        // Check for season ranges
+                        let foundRange = false;
+                        for (const pattern of seasonRangePatterns) {
+                            const match = titleLower.match(pattern);
+                            if (match) {
+                                const start = parseInt(match[1]);
+                                const end = parseInt(match[2]);
+                                console.log(`[TV] Range match: ${start}-${end} in "${r.title}"`);
+                                for (let i = start; i <= end; i++) {
+                                    allSeasons.add(i);
+                                }
+                                foundRange = true;
+                                break;
                             }
                         }
-
-                        // Check for single season (e.g., "Сезон: 2")
-                        match = titleLower.match(seasonSinglePattern);
-                        if (match) {
-                            const s = parseInt(match[1]);
-                            console.log(`[TV] Single season found: ${s} in "${r.title}"`);
-                            allSeasons.add(s);
+                        
+                        // Check for single season (only if not already found as range)
+                        if (!foundRange) {
+                            for (const pattern of seasonSinglePatterns) {
+                                const match = titleLower.match(pattern);
+                                if (match) {
+                                    const s = parseInt(match[1]);
+                                    console.log(`[TV] Single season match: ${s} in "${r.title}"`);
+                                    allSeasons.add(s);
+                                    break;
+                                }
+                            }
                         }
                     });
 
