@@ -166,12 +166,12 @@ class BaseSpider(ABC):
     def get(self, url: str, **kwargs) -> requests.Response:
         """Make GET request"""
         full_url = urljoin(self.get_base_url(), url)
-        return self.session.get(full_url, timeout=30 if self.USE_TOR else 10, **kwargs)
+        return self.session.get(full_url, timeout=30 if self.USE_TOR else 30, **kwargs)
 
     def post(self, url: str, **kwargs) -> requests.Response:
         """Make POST request"""
         full_url = urljoin(self.get_base_url(), url)
-        return self.session.post(full_url, timeout=30 if self.USE_TOR else 10, **kwargs)
+        return self.session.post(full_url, timeout=30 if self.USE_TOR else 30, **kwargs)
 
     @staticmethod
     def extract_magnet(html: str) -> Optional[str]:
