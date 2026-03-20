@@ -1028,8 +1028,10 @@
             showSeriesLoadingOverlay(seriesName, season, episode);
 
             // Step 1: Search for series using GENERAL search (returns ALL torrents including collections)
-            console.log(`[TV] Searching for: ${seriesName}`);
-            fetch(`/api/torrents/search?q=${encodeURIComponent(seriesName)}`)
+            // Use timestamp to bypass cache and get fresh results
+            const timestamp = Date.now();
+            console.log(`[TV] Searching for: ${seriesName} (timestamp: ${timestamp})`);
+            fetch(`/api/torrents/search?q=${encodeURIComponent(seriesName)}&t=${timestamp}`)
             .then(r => r.json())
             .then(data => {
                 console.log(`\n${'='.repeat(60)}`);
@@ -1037,12 +1039,16 @@
                 console.log(`${'='.repeat(60)}\n`);
 
                 if (data.success && data.results && data.results.length > 0) {
+                    console.log(`[TV] ═════════════════════════════════════════`);
                     console.log(`[TV] Total results: ${data.results.length}`);
+                    console.log(`[TV] ═════════════════════════════════════════`);
                     
-                    // Log first 10 results to see what we have
-                    data.results.slice(0, 10).forEach((r, i) => {
-                        console.log(`[TV] Result ${i+1}: ${r.title} | Tracker: ${r.tracker}`);
+                    // Log ALL results to see what we have
+                    data.results.forEach((r, i) => {
+                        console.log(`[TV] [${i+1}] ${r.title}`);
+                        console.log(`      Tracker: ${r.tracker} | Seeds: ${r.seeds} | Quality: ${r.quality}`);
                     });
+                    console.log(`[TV] ═════════════════════════════════════════`);
                     
                     // Collect all unique seasons from ALL results
                     const allSeasons = new Set();
