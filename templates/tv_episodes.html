@@ -1027,7 +1027,7 @@
             console.log(`[TV] Creating loading overlay...`);
             showSeriesLoadingOverlay(seriesName, season, episode);
 
-            // Step 1: Search for series with ALL seasons
+            // Step 1: Search for series with ALL seasons (without season filter to get all collections)
             fetch(`/api/torrents/search/series?name=${encodeURIComponent(seriesName)}`)
             .then(r => r.json())
             .then(data => {
@@ -1036,14 +1036,14 @@
                 console.log(`${'='.repeat(60)}\n`);
 
                 if (data.success && data.results && data.results.length > 0) {
-                    // Collect all unique seasons from results
+                    // Collect all unique seasons from ALL results
                     const allSeasons = new Set();
                     const seasonRangePattern = /сезон[:\s]*(\d+)\s*-\s*(\d+)/i;
                     const seasonSinglePattern = /сезон[:\s]*(\d+)/i;
 
                     data.results.forEach(r => {
                         const titleLower = r.title.toLowerCase();
-                        
+
                         // Check for season range (e.g., "Сезон: 1-5")
                         let match = titleLower.match(seasonRangePattern);
                         if (match) {
@@ -1052,9 +1052,8 @@
                             for (let i = start; i <= end; i++) {
                                 allSeasons.add(i);
                             }
-                            return;
                         }
-                        
+
                         // Check for single season (e.g., "Сезон: 2")
                         match = titleLower.match(seasonSinglePattern);
                         if (match) {
@@ -1065,13 +1064,13 @@
                     // Format seasons list (e.g., "1-15" or "1-3, 5-9")
                     const sortedSeasons = Array.from(allSeasons).sort((a, b) => a - b);
                     let seasonDisplay = '';
-                    
+
                     if (sortedSeasons.length > 0) {
                         // Group consecutive seasons into ranges
                         const ranges = [];
                         let start = sortedSeasons[0];
                         let end = sortedSeasons[0];
-                        
+
                         for (let i = 1; i < sortedSeasons.length; i++) {
                             if (sortedSeasons[i] === end + 1) {
                                 end = sortedSeasons[i];
@@ -1091,7 +1090,7 @@
                     const overlayTitle = `${russianName}${englishName ? ' / ' + englishName : ''} / Сезон: ${seasonDisplay}`;
                     updateOverlayTitle(overlayTitle);
 
-                    // Filter out excluded patterns and find best match
+                    // Filter out excluded patterns (TV shows only, not collections)
                     const excludedPatterns = [
                         /битва экстрасенсов/i,
                         /новая битва экстрасенсов/i,
@@ -1120,24 +1119,24 @@
 
                     console.log(`[TV] Filtered ${data.results.length} -> ${filteredResults.length} results`);
 
-                    // Find the best torrent:
+                    // Find the best torrent for THIS season:
                     // 1. First try to find exact season match (e.g., "Сезон: 2")
-                    // 2. Then try collections (e.g., "Сезон: 1-5") that include this season
+                    // 2. Then try collections (e.g., "Сезон: 1-5") that include THIS season
                     // 3. Fall back to first result
                     let torrent;
-                    
+
                     const seasonExact = filteredResults.find(r => {
                         const titleLower = r.title.toLowerCase();
                         // Match "Сезон: 2" but not "Сезон: 12" or "Сезон: 1-15"
                         const exactPattern = new RegExp(`сезон[:\\s]*${season}(?!\\d)(?![-\\s]*\\d)`, 'i');
                         return exactPattern.test(titleLower);
                     });
-                    
+
                     if (seasonExact) {
                         torrent = seasonExact;
-                        console.log(`[TV] Found exact season match`);
+                        console.log(`[TV] Found exact season match: ${torrent.title}`);
                     } else {
-                        // Try to find collection that includes this season
+                        // Try to find collection that includes THIS season
                         const seasonCollection = filteredResults.find(r => {
                             const titleLower = r.title.toLowerCase();
                             // Match "Сезон: 1-5", "Сезон 1-5", etc.
@@ -1146,18 +1145,20 @@
                             if (match) {
                                 const startSeason = parseInt(match[1]);
                                 const endSeason = parseInt(match[2]);
-                                return season >= startSeason && season <= endSeason;
+                                const includes = season >= startSeason && season <= endSeason;
+                                console.log(`[TV] Collection: ${r.title} (${startSeason}-${endSeason}), includes ${season}: ${includes}`);
+                                return includes;
                             }
                             return false;
                         });
-                        
+
                         if (seasonCollection) {
                             torrent = seasonCollection;
-                            console.log(`[TV] Found season collection match`);
+                            console.log(`[TV] Found season collection: ${torrent.title}`);
                         } else {
                             // Fall back to first result
                             torrent = filteredResults[0];
-                            console.log(`[TV] Using first result`);
+                            console.log(`[TV] Using first result: ${torrent.title}`);
                         }
                     }
 
