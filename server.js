@@ -203,6 +203,20 @@ torrent.on('metadata', () => {
     console.log(`📏 Размер: ${(videoFile.length / 1024 / 1024 / 1024).toFixed(2)} GB`);
     console.log(`📁 Индекс файла: ${fileIndex}`);
 
+    // 🔥 ВАЖНО: Отменяем загрузку всех файлов кроме выбранного
+    console.log(`\n📥 Загружаем ТОЛЬКО файл ${fileIndex}, остальные отменяем...`);
+    torrent.files.forEach((file, i) => {
+        if (i === fileIndex) {
+            // Выбранный файл - загружаем с высоким приоритетом
+            file.select(10); // Priority 10 (highest)
+            console.log(`   ✅ [${i}] ${file.name} - ЗАГРУЖАЕМ`);
+        } else {
+            // Остальные файлы - отменяем загрузку
+            file.deselect();
+            console.log(`   ❌ [${i}] ${file.name} - ОТМЕНЕНО`);
+        }
+    });
+
     // Запускаем сервер сразу после получения метаданных
     startStreaming();
 });
