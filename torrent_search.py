@@ -300,11 +300,12 @@ class TorrentSearcher:
         if not query:
             return []
 
-        # Default trackers (RuTracker, Rutor, LostFilm)
+        # Default trackers (only RuTracker enabled)
         available_trackers = [
             ("RuTracker", self.search_rutracker),
-            ("Rutor", self.search_rutor),
-            ("LostFilm", self.search_lostfilm),
+            # Rutor and LostFilm disabled for performance
+            # ("Rutor", self.search_rutor),
+            # ("LostFilm", self.search_lostfilm),
         ]
 
         # Filter if specific trackers requested
