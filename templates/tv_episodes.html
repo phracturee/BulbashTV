@@ -1829,48 +1829,48 @@
             const season = currentEpisode.season_number;
             const episode = currentEpisode.episode_number;
             
-            // Try two search queries: specific episode and general series
+            // Two search queries: exact season AND season catalogs
             const queries = [
-                `${TV_TITLE} S${String(season).padStart(2, '0')}E${String(episode).padStart(2, '0')}`,
-                `${TV_TITLE} сезон ${season}`,
-                TV_TITLE
+                `${TV_TITLE} сезон ${season}`,           // Exact season: "Сверхъестественное сезон 2"
+                `${TV_TITLE} сезоны`,                    // Catalogs: "Сверхъестественное сезоны"
+                `${TV_TITLE} сезон 1-15`,                // Common range format
             ];
 
-            // Show loading
             showNotification('Поиск раздач...', 'info');
+            console.log(`\n${'='.repeat(60)}`);
+            console.log(`[TV] ========== TORRENT SELECTION ==========`);
+            console.log(`[TV] Season: ${season}, Episode: ${episode}`);
+            console.log(`${'='.repeat(60)}\n`);
 
             try {
                 let allResults = [];
+                const seenMagnets = new Set();
                 
                 // Try each query
                 for (const query of queries) {
-                    console.log(`[Torrent Search] Query: ${query}`);
-                    const response = await fetch(`/api/torrents/search?q=${encodeURIComponent(query)}`);
+                    console.log(`[TV] Search query: ${query}`);
+                    const response = await fetch(`/api/torrents/search?q=${encodeURIComponent(query)}&t=${Date.now()}`);
                     const data = await response.json();
                     
                     if (data.success && data.results && data.results.length > 0) {
-                        console.log(`[Torrent Search] Found ${data.results.length} results for: ${query}`);
-                        allResults = allResults.concat(data.results);
+                        console.log(`[TV] Found ${data.results.length} results for: ${query}`);
                         
-                        // If we found results, stop searching
-                        if (allResults.length >= 10) break;
+                        // Add unique results (by magnet)
+                        data.results.forEach(r => {
+                            if (r.magnet && !seenMagnets.has(r.magnet)) {
+                                seenMagnets.add(r.magnet);
+                                allResults.push(r);
+                                console.log(`[TV]   + ${r.title} (${r.tracker})`);
+                            }
+                        });
                     }
                 }
                 
-                // Remove duplicates by magnet link
-                const uniqueResults = [];
-                const seenMagnets = new Set();
-                for (const result of allResults) {
-                    if (!seenMagnets.has(result.magnet)) {
-                        seenMagnets.add(result.magnet);
-                        uniqueResults.push(result);
-                    }
-                }
+                console.log(`\n[TV] Total unique results: ${allResults.length}`);
+                console.log(`${'='.repeat(60)}\n`);
 
-                console.log(`[Torrent Search] Total unique results: ${uniqueResults.length}`);
-
-                if (uniqueResults.length > 0) {
-                    showTorrentSelectionModal(uniqueResults, season, episode);
+                if (allResults.length > 0) {
+                    showTorrentSelectionModal(allResults, season, episode);
                 } else {
                     showNotification('Раздачи не найдены', 'error');
                 }
