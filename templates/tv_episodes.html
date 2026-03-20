@@ -1032,7 +1032,7 @@
                 console.log(`${'='.repeat(60)}\n`);
 
                 if (data.success && data.results && data.results.length > 0) {
-                    // Filter out excluded patterns and find best match
+                    // Filter out excluded patterns (TV shows only, not collections)
                     const excludedPatterns = [
                         /битва экстрасенсов/i,
                         /новая битва экстрасенсов/i,
@@ -1045,10 +1045,6 @@
                         /россия\s+1/i,
                         /эфир\s+от/i,
                         /выпуск\s+\d+/i,
-                        // Exclude complete series collections (e.g., "Сезон: 1-15")
-                        /сезон:\s*\d+\s*-\s*\d+/i,
-                        /сезон\s+\d+\s*-\s*\d+/i,
-                        /seasons?\s+\d+\s*-\s*\d+/i,
                     ];
 
                     // Filter results
@@ -1065,14 +1061,46 @@
 
                     console.log(`[TV] Filtered ${data.results.length} -> ${filteredResults.length} results`);
 
-                    // Find the torrent with matching season number (exact match, not range)
-                    const torrent = filteredResults.find(r => {
+                    // Find the best torrent:
+                    // 1. First try to find exact season match (e.g., "Сезон: 2")
+                    // 2. Then try collections (e.g., "Сезон: 1-5") that include this season
+                    // 3. Fall back to first result
+                    let torrent;
+                    
+                    const seasonExact = filteredResults.find(r => {
                         const titleLower = r.title.toLowerCase();
-                        // Check if season number matches exactly (not 2 for 22, not 1-15)
-                        // Match "Сезон: 1" but not "Сезон: 1-15"
-                        const seasonPattern = new RegExp(`сезон[:\\s]*${season}\\b(?![-\\s]*\\d)`, 'i');
-                        return seasonPattern.test(titleLower);
-                    }) || (filteredResults.length > 0 ? filteredResults[0] : data.results[0]);
+                        // Match "Сезон: 2" but not "Сезон: 12" or "Сезон: 1-15"
+                        const exactPattern = new RegExp(`сезон[:\\s]*${season}(?!\\d)(?![-\\s]*\\d)`, 'i');
+                        return exactPattern.test(titleLower);
+                    });
+                    
+                    if (seasonExact) {
+                        torrent = seasonExact;
+                        console.log(`[TV] Found exact season match`);
+                    } else {
+                        // Try to find collection that includes this season
+                        const seasonCollection = filteredResults.find(r => {
+                            const titleLower = r.title.toLowerCase();
+                            // Match "Сезон: 1-5", "Сезон 1-5", etc.
+                            const collectionPattern = /сезон[:\s]*(\d+)\s*-\s*(\d+)/i;
+                            const match = titleLower.match(collectionPattern);
+                            if (match) {
+                                const startSeason = parseInt(match[1]);
+                                const endSeason = parseInt(match[2]);
+                                return season >= startSeason && season <= endSeason;
+                            }
+                            return false;
+                        });
+                        
+                        if (seasonCollection) {
+                            torrent = seasonCollection;
+                            console.log(`[TV] Found season collection match`);
+                        } else {
+                            // Fall back to first result
+                            torrent = filteredResults[0];
+                            console.log(`[TV] Using first result`);
+                        }
+                    }
 
                     console.log(`\n${'='.repeat(60)}`);
                     console.log(`[TV] ========== SELECTED TORRENT ==========`);
