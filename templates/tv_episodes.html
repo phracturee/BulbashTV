@@ -1027,8 +1027,9 @@
             console.log(`[TV] Creating loading overlay...`);
             showSeriesLoadingOverlay(seriesName, season, episode);
 
-            // Step 1: Search for series with ALL seasons (without season filter to get all collections)
-            fetch(`/api/torrents/search/series?name=${encodeURIComponent(seriesName)}`)
+            // Step 1: Search for series using GENERAL search (returns ALL torrents including collections)
+            console.log(`[TV] Searching for: ${seriesName}`);
+            fetch(`/api/torrents/search?q=${encodeURIComponent(seriesName)}`)
             .then(r => r.json())
             .then(data => {
                 console.log(`\n${'='.repeat(60)}`);
@@ -1036,6 +1037,13 @@
                 console.log(`${'='.repeat(60)}\n`);
 
                 if (data.success && data.results && data.results.length > 0) {
+                    console.log(`[TV] Total results: ${data.results.length}`);
+                    
+                    // Log first 10 results to see what we have
+                    data.results.slice(0, 10).forEach((r, i) => {
+                        console.log(`[TV] Result ${i+1}: ${r.title} | Tracker: ${r.tracker}`);
+                    });
+                    
                     // Collect all unique seasons from ALL results
                     const allSeasons = new Set();
                     const seasonRangePattern = /сезон[:\s]*(\d+)\s*-\s*(\d+)/i;
@@ -1043,12 +1051,18 @@
 
                     data.results.forEach(r => {
                         const titleLower = r.title.toLowerCase();
+                        
+                        // Debug: log titles that contain "сезон"
+                        if (titleLower.includes('сезон')) {
+                            console.log(`[TV] Found season in: ${r.title}`);
+                        }
 
                         // Check for season range (e.g., "Сезон: 1-5")
                         let match = titleLower.match(seasonRangePattern);
                         if (match) {
                             const start = parseInt(match[1]);
                             const end = parseInt(match[2]);
+                            console.log(`[TV] Season range found: ${start}-${end} in "${r.title}"`);
                             for (let i = start; i <= end; i++) {
                                 allSeasons.add(i);
                             }
@@ -1057,7 +1071,9 @@
                         // Check for single season (e.g., "Сезон: 2")
                         match = titleLower.match(seasonSinglePattern);
                         if (match) {
-                            allSeasons.add(parseInt(match[1]));
+                            const s = parseInt(match[1]);
+                            console.log(`[TV] Single season found: ${s} in "${r.title}"`);
+                            allSeasons.add(s);
                         }
                     });
 
