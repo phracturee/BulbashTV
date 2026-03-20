@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -203,18 +204,22 @@ torrent.on('metadata', () => {
     console.log(`📏 Размер: ${(videoFile.length / 1024 / 1024 / 1024).toFixed(2)} GB`);
     console.log(`📁 Индекс файла: ${fileIndex}`);
 
-    // 🔥 ВАЖНО: Отменяем загрузку всех файлов кроме выбранного
+    // 🔥 ВАЖНО: Сбрасываем загрузку ВСЕГО торрента, затем выбираем только 1 файл
     console.log(`\n📥 Загружаем ТОЛЬКО файл ${fileIndex}, остальные отменяем...`);
+    
+    // Сначала deselect ВСЕГО торрента (priorities: 0 = не загружать)
+    torrent.deselect(0, torrent.pieces.length - 1, 0);
+    console.log(`   ❌ Весь торрент отменён`);
+    
+    // Затем select только нужного файла с высоким приоритетом
+    videoFile.select(10); // Priority 10 (highest)
+    console.log(`   ✅ [${fileIndex}] ${videoFile.name} - ЗАГРУЖАЕМ (приоритет 10)`);
+    
+    // Логируем все файлы для отладки
+    console.log(`\n📁 Список файлов:`);
     torrent.files.forEach((file, i) => {
-        if (i === fileIndex) {
-            // Выбранный файл - загружаем с высоким приоритетом
-            file.select(10); // Priority 10 (highest)
-            console.log(`   ✅ [${i}] ${file.name} - ЗАГРУЖАЕМ`);
-        } else {
-            // Остальные файлы - отменяем загрузку
-            file.deselect();
-            console.log(`   ❌ [${i}] ${file.name} - ОТМЕНЕНО`);
-        }
+        const isSelected = (i === fileIndex) ? '✅ ЗАГРУЖАЕМ' : '❌ ОТМЕНЕНО';
+        console.log(`   [${i}] ${file.name} (${(file.length / 1024 / 1024).toFixed(1)} MB) - ${isSelected}`);
     });
 
     // Запускаем сервер сразу после получения метаданных
@@ -352,33 +357,73 @@ function startStreaming() {
 }
 
 let mpvLaunched = false;
+let mpvProcess = null;
+let lastPlaybackPosition = 0;
+let totalDuration = 0;
 
 function launchMpv(streamUrl, server) {
     if (mpvLaunched) return;
     mpvLaunched = true;
-    
+
     console.log('\n\n🎬 Запуск MPV...');
-    
-    const mpv = spawn('mpv', [
+
+    mpvProcess = spawn('mpv', [
         streamUrl,
         `--title=${videoFile.name}`,
         '--cache=yes',
         '--cache-secs=30',
-        '--keep-open=yes'
+        '--keep-open=yes',
+        '--input-ipc-server=/tmp/mpv-ipc.sock'
     ], {
         stdio: 'inherit',
         detached: false
     });
 
-    mpv.on('error', (err) => {
+    mpvProcess.on('error', (err) => {
         console.error(`\n❌ Ошибка MPV: ${err.message}`);
         console.error('Установите MPV: sudo apt install mpv');
         server.close();
         cleanup();
     });
 
-    mpv.on('exit', () => {
+    mpvProcess.on('exit', (code) => {
         console.log('\n\n👋 MPV закрыт');
+        
+        // Проверяем % просмотра перед удалением
+        const downloadPath = path.join('./downloads', videoFile.path);
+        const watchPercent = totalDuration > 0 ? (lastPlaybackPosition / totalDuration * 100) : 0;
+        
+        console.log(`📊 Просмотрено: ${watchPercent.toFixed(1)}% (${(lastPlaybackPosition/60).toFixed(1)} мин из ${(totalDuration/60).toFixed(1)} мин)`);
+        
+        // Если просмотрено >90% - удаляем файл
+        if (watchPercent > 90) {
+            console.log(`\n🗑️ Файл просмотрен >90%, удаляем...`);
+            try {
+                if (fs.existsSync(downloadPath)) {
+                    fs.unlinkSync(downloadPath);
+                    console.log(`✅ Удалено: ${downloadPath}`);
+                    
+                    // Пробуем удалить пустые папки
+                    const dirPath = path.dirname(downloadPath);
+                    try {
+                        const files = fs.readdirSync(dirPath);
+                        if (files.length === 0) {
+                            fs.rmdirSync(dirPath);
+                            console.log(`✅ Удалена пустая папка: ${dirPath}`);
+                        }
+                    } catch (e) {
+                        // Папка не пустая или ошибка
+                    }
+                } else {
+                    console.log(`⚠️ Файл не найден: ${downloadPath}`);
+                }
+            } catch (err) {
+                console.error(`❌ Ошибка удаления: ${err.message}`);
+            }
+        } else {
+            console.log(`ℹ️ Файл сохранён (просмотрено ${watchPercent.toFixed(1)}%)`);
+        }
+        
         server.close();
         cleanup();
     });
