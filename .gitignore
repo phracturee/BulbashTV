@@ -65,3 +65,6 @@ static/img/*.webp
 build/
 dist/
 *.egg-info/
+
+.qwen/
+gha-creds-*.json
