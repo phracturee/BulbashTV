@@ -996,17 +996,21 @@
                 return;
             }
 
-            // Format: "Russian Name / English Name / Season: X"
+            // Format: "Russian Name / English Name"
             let seriesName = TV_TITLE;
+            let russianName = '';
+            let englishName = '';
 
             // If title contains both Russian and English (separated by /)
             if (TV_TITLE.includes('/')) {
                 const parts = TV_TITLE.split('/');
                 if (parts.length >= 2) {
-                    const russianName = parts[0].trim();
-                    const englishName = parts[1].trim();
+                    russianName = parts[0].trim();
+                    englishName = parts[1].trim();
                     seriesName = `${russianName} / ${englishName}`;
                 }
+            } else {
+                russianName = TV_TITLE;
             }
 
             console.log(`\n${'='.repeat(60)}`);
@@ -1023,8 +1027,8 @@
             console.log(`[TV] Creating loading overlay...`);
             showSeriesLoadingOverlay(seriesName, season, episode);
 
-            // Step 1: Search for series with specific season
-            fetch(`/api/torrents/search/series?name=${encodeURIComponent(seriesName)}&season=${season}`)
+            // Step 1: Search for series with ALL seasons
+            fetch(`/api/torrents/search/series?name=${encodeURIComponent(seriesName)}`)
             .then(r => r.json())
             .then(data => {
                 console.log(`\n${'='.repeat(60)}`);
@@ -1032,7 +1036,62 @@
                 console.log(`${'='.repeat(60)}\n`);
 
                 if (data.success && data.results && data.results.length > 0) {
-                    // Filter out excluded patterns (TV shows only, not collections)
+                    // Collect all unique seasons from results
+                    const allSeasons = new Set();
+                    const seasonRangePattern = /сезон[:\s]*(\d+)\s*-\s*(\d+)/i;
+                    const seasonSinglePattern = /сезон[:\s]*(\d+)/i;
+
+                    data.results.forEach(r => {
+                        const titleLower = r.title.toLowerCase();
+                        
+                        // Check for season range (e.g., "Сезон: 1-5")
+                        let match = titleLower.match(seasonRangePattern);
+                        if (match) {
+                            const start = parseInt(match[1]);
+                            const end = parseInt(match[2]);
+                            for (let i = start; i <= end; i++) {
+                                allSeasons.add(i);
+                            }
+                            return;
+                        }
+                        
+                        // Check for single season (e.g., "Сезон: 2")
+                        match = titleLower.match(seasonSinglePattern);
+                        if (match) {
+                            allSeasons.add(parseInt(match[1]));
+                        }
+                    });
+
+                    // Format seasons list (e.g., "1-15" or "1-3, 5-9")
+                    const sortedSeasons = Array.from(allSeasons).sort((a, b) => a - b);
+                    let seasonDisplay = '';
+                    
+                    if (sortedSeasons.length > 0) {
+                        // Group consecutive seasons into ranges
+                        const ranges = [];
+                        let start = sortedSeasons[0];
+                        let end = sortedSeasons[0];
+                        
+                        for (let i = 1; i < sortedSeasons.length; i++) {
+                            if (sortedSeasons[i] === end + 1) {
+                                end = sortedSeasons[i];
+                            } else {
+                                ranges.push(start === end ? `${start}` : `${start}-${end}`);
+                                start = sortedSeasons[i];
+                                end = sortedSeasons[i];
+                            }
+                        }
+                        ranges.push(start === end ? `${start}` : `${start}-${end}`);
+                        seasonDisplay = ranges.join(', ');
+                    } else {
+                        seasonDisplay = 'N/A';
+                    }
+
+                    // Update overlay with full season info
+                    const overlayTitle = `${russianName}${englishName ? ' / ' + englishName : ''} / Сезон: ${seasonDisplay}`;
+                    updateOverlayTitle(overlayTitle);
+
+                    // Filter out excluded patterns and find best match
                     const excludedPatterns = [
                         /битва экстрасенсов/i,
                         /новая битва экстрасенсов/i,
@@ -1343,7 +1402,18 @@
                 window.seriesStatusInterval = null;
             }
         }
-        
+
+        // Update overlay title with season ranges
+        function updateOverlayTitle(title) {
+            const overlay = document.getElementById('seriesLoadingOverlay');
+            if (overlay) {
+                const titleEl = overlay.querySelector('h3');
+                if (titleEl) {
+                    titleEl.innerHTML = `<i class="fas fa-info-circle"></i> ${title}`;
+                }
+            }
+        }
+
         // Show loading overlay with detailed info
         function showSeriesLoadingOverlay(seriesName, season, episode) {
             console.log(`[Overlay] Creating loading overlay...`);
