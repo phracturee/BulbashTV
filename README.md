@@ -2,6 +2,8 @@
 
 **BulbashTV** is a web application for discovering and streaming movies and TV shows via torrent integration. It uses TMDB API for metadata and searches multiple torrent trackers.
 
+**Languages:** [English](README.md) | [Русский](README.ru.md)
+
 ## Table of Contents
 
 - [Features](#features)
