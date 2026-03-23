@@ -105,9 +105,11 @@ class BulbashTVApp:
         @self.app.after_request
         def add_security_headers(response):
             # Content Security Policy
+            # Note: 'unsafe-inline' is needed for inline scripts in templates
+            # For better security, consider moving scripts to external files with nonces
             response.headers['Content-Security-Policy'] = (
                 "default-src 'self'; "
-                "script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+                "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
                 "style-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com 'unsafe-inline'; "
                 "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
                 "img-src 'self' https: data: blob:; "
