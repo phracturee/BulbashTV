@@ -487,6 +487,7 @@ npm install
 
 ## Contact
 
+- **Email:** phracture226@gmail.com
 - **Issues:** GitHub Issues
 - **Repository:** https://github.com/phracturee/BulbashTV
 

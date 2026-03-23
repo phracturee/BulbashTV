@@ -100,7 +100,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to th
 
 If you discover a security vulnerability, please report it responsibly:
 1. **Do not** create a public GitHub issue
-2. Email: security@bulbash.tv (placeholder - update with actual contact)
+2. Email: phracture226@gmail.com
 3. Allow reasonable time for disclosure and patching
 
 ## License
