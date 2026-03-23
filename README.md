@@ -9,8 +9,6 @@
 - [Features](#features)
 - [Architecture](#architecture)
 - [Installation](#installation)
-  - [Docker (Recommended)](#docker-recommended)
-  - [Local Installation](#local-installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [API Endpoints](#api-endpoints)
@@ -72,48 +70,20 @@ BulbashTVApp (Flask application factory)
 
 ## Installation
 
-### Docker (Recommended)
-
-The easiest way to run the application is using Docker Compose:
-
-```bash
-# Clone the repository
-git clone https://github.com/phracturee/BulbashTV.git
-cd BulbashTV
-
-# Setup configuration
-cp config.py.example config.py
-# Edit config.py and add your TMDB API key
-
-# Build and run
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-```
-
-The application will be available at: **http://localhost:5000**
-
-**For detailed Docker installation:** see [DOCKER.md](DOCKER.md)
-
----
-
-### Local Installation
-
-#### 1. Clone the Repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/phracturee/BulbashTV.git
 cd BulbashTV
 ```
 
-#### 2. Install Python Dependencies
+### 2. Install Python Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-#### 3. Install Node.js Dependencies
+### 3. Install Node.js Dependencies
 
 ```bash
 npm install
@@ -121,7 +91,7 @@ npm install
 
 This installs `webtorrent` and `webtorrent-cli` required for streaming.
 
-#### 4. Install mpv (for playback)
+### 4. Install mpv (for playback)
 
 ```bash
 # Ubuntu/Debian
@@ -134,7 +104,7 @@ brew install mpv
 # Download from https://mpv.io/installation/
 ```
 
-#### 5. Setup Configuration
+### 5. Setup Configuration
 
 ```bash
 cp config.py.example config.py
@@ -528,4 +498,4 @@ This project is created for educational purposes.
 
 ---
 
-**BulbashTV** © 2024-2025
+**BulbashTV** © 2026

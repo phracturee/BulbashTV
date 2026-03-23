@@ -9,8 +9,6 @@
 - [Возможности](#возможности)
 - [Архитектура](#архитектура)
 - [Установка](#установка)
-  - [Docker (рекомендуется)](#docker-рекомендуется)
-  - [Локальная установка](#локальная-установка)
 - [Настройка](#настройка)
 - [Использование](#использование)
 - [API Endpoints](#api-endpoints)
@@ -72,48 +70,20 @@ BulbashTVApp (Flask application factory)
 
 ## Установка
 
-### Docker (рекомендуется)
-
-Самый простой способ запуска — использование Docker Compose:
-
-```bash
-# Клонирование репозитория
-git clone https://github.com/phracturee/BulbashTV.git
-cd BulbashTV
-
-# Настройка конфигурации
-cp config.py.example config.py
-# Отредактируйте config.py и укажите ваш TMDB API ключ
-
-# Сборка и запуск
-docker-compose up -d
-
-# Просмотр логов
-docker-compose logs -f
-```
-
-Приложение будет доступно по адресу: **http://localhost:5000**
-
-**Подробнее о Docker установке:** см. [DOCKER.md](DOCKER.md)
-
----
-
-### Локальная установка
-
-#### 1. Клонирование репозитория
+### 1. Клонирование репозитория
 
 ```bash
 git clone https://github.com/phracturee/BulbashTV.git
 cd BulbashTV
 ```
 
-#### 2. Установка Python зависимостей
+### 2. Установка Python зависимостей
 
 ```bash
 pip install -r requirements.txt
 ```
 
-#### 3. Установка Node.js зависимостей
+### 3. Установка Node.js зависимостей
 
 ```bash
 npm install
@@ -121,7 +91,7 @@ npm install
 
 Это установит `webtorrent` и `webtorrent-cli` необходимые для стриминга.
 
-#### 4. Установка mpv (для воспроизведения)
+### 4. Установка mpv (для воспроизведения)
 
 ```bash
 # Ubuntu/Debian
@@ -134,7 +104,7 @@ brew install mpv
 # Скачайте с https://mpv.io/installation/
 ```
 
-#### 5. Настройка конфигурации
+### 5. Настройка конфигурации
 
 ```bash
 cp config.py.example config.py
@@ -145,8 +115,6 @@ cp config.py.example config.py
 ---
 
 ## Настройка
-
-### Конфигурационный файл (config.py)
 
 ```python
 # TMDB API Configuration
@@ -542,4 +510,4 @@ npm install
 
 ---
 
-**BulbashTV** © 2024-2026
+**BulbashTV** © 2026
