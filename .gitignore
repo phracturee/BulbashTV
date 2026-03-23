@@ -66,5 +66,9 @@ build/
 dist/
 *.egg-info/
 
+# AI/Assistant files (not for repository)
 .qwen/
+QWEN.md
+
+# GitHub Actions credentials
 gha-creds-*.json

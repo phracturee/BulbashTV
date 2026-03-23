@@ -12,16 +12,16 @@ const client = new WebTorrent();
 const PORT = 8888;
 
 console.log(`
-╔═══════════════════════════════════════════════════════╗
-║     🍿 Torrent Stream MPV - Стриминг в MPV плеер     ║
-╠═══════════════════════════════════════════════════════╣
-║  Использование:                                       ║
-║  node server.js <magnet-link> [--episode SXXEYY]      ║
-║                                                       ║
-║  Пример:                                              ║
-║  node server.js "magnet:?xt=urn:btih:..."             ║
-║  node server.js "magnet:..." --episode S01E02         ║
-╚═══════════════════════════════════════════════════════╝
+=====================================================
+     Torrent Stream - Streaming to MPV player     
+-----------------------------------------------------
+  Usage:                                             
+  node server.js <magnet-link> [--episode SXXEYY]    
+                                                     
+  Example:                                           
+  node server.js "magnet:?xt=urn:btih:..."           
+  node server.js "magnet:..." --episode S01E02       
+=====================================================
 `);
 
 let magnetUri = process.argv[2];
@@ -31,27 +31,27 @@ let episodePattern = null;
 for (let i = 3; i < process.argv.length; i++) {
     if (process.argv[i] === '--episode' && process.argv[i + 1]) {
         episodePattern = process.argv[i + 1];
-        console.log(`📺 Episode pattern: ${episodePattern}`);
+        console.log(`Episode pattern: ${episodePattern}`);
         i++; // Skip next argument
     }
 }
 
 if (!magnetUri) {
-    console.error('❌ Укажите magnet-ссылку!');
-    console.error('Пример: node server.js "magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10"');
+    console.error('Error: Specify a magnet link!');
+    console.error('Example: node server.js "magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10"');
     process.exit(1);
 }
 
-// Кодируем ссылку если есть некорректные символы
+// Encode URL if there are invalid characters
 try {
     const url = new URL(magnetUri);
     magnetUri = url.toString();
 } catch (e) {
-    console.error('❌ Некорректная magnet-ссылка!');
+    console.error('Error: Invalid magnet link!');
     process.exit(1);
 }
 
-console.log('📥 Добавление торрента...');
+console.log('Adding torrent...');
 
 const torrent = client.add(magnetUri, { path: './downloads' });
 
@@ -61,29 +61,29 @@ let serverStarted = false;
 
 torrent.on('metadata', () => {
     clearTimeout(metadataTimeout);
-    console.log(`\n✅ Метаданные получены`);
-    console.log(`📊 Торрент: ${torrent.name}`);
-    console.log(`📁 Файлов: ${torrent.files.length}`);
+    console.log(`\nMetadata received`);
+    console.log(`Torrent: ${torrent.name}`);
+    console.log(`Files: ${torrent.files.length}`);
 
-    // Ищем видеофайл (самый большой с видео расширением)
+    // Find video file (largest file with video extension)
     const videoExts = ['.mp4', '.mkv', '.avi', '.mov', '.webm', '.wmv', '.m4v'];
     let maxSize = 0;
 
-    // Если указан паттерн эпизода (S01E02), ищем точное совпадение
+    // If episode pattern is specified (S01E02), search for exact match
     if (episodePattern) {
-        console.log(`🔍 Поиск файла с паттерном: ${episodePattern}`);
+        console.log(`Searching for file with pattern: ${episodePattern}`);
 
-        // Извлекаем сезон и серию из паттерна
-        // Поддержка форматов: S01E06, S1E6, S1.E6, 1x06, 1x6, Серия 6, Episode 6
+        // Extract season and episode from pattern
+        // Supported formats: S01E06, S1E6, S1.E6, 1x06, 1x6, Series 6, Episode 6
         let season = null, episode = null;
-        
+
         // Pattern: S01E06 or S1E6
         let match = episodePattern.match(/^S(\d+)E(\d+)$/i);
         if (match) {
             season = parseInt(match[1]);
             episode = parseInt(match[2]);
         }
-        
+
         // Pattern: S1.E6 or S01.E06
         if (!season) {
             match = episodePattern.match(/^S(\d+)\.E(\d+)$/i);
@@ -92,7 +92,7 @@ torrent.on('metadata', () => {
                 episode = parseInt(match[2]);
             }
         }
-        
+
         // Pattern: 1x06 or 1x6
         if (!season) {
             match = episodePattern.match(/^(\d+)x(\d+)$/i);
@@ -101,10 +101,10 @@ torrent.on('metadata', () => {
                 episode = parseInt(match[2]);
             }
         }
-        
-        // Pattern: Серия 6 or Episode 6
+
+        // Pattern: Series 6 or Episode 6
         if (!season) {
-            match = episodePattern.match(/^(?:Серия|Episode)\s*(\d+)$/i);
+            match = episodePattern.match(/^(?:Series|Episode)\s*(\d+)$/i);
             if (match) {
                 season = 1; // Default season 1
                 episode = parseInt(match[1]);
@@ -112,8 +112,8 @@ torrent.on('metadata', () => {
         }
 
         if (season && episode) {
-            console.log(`🎯 Сезон: ${season}, Серия: ${episode}`);
-            
+            console.log(`Season: ${season}, Episode: ${episode}`);
+
             // More precise regex patterns for season/episode extraction
             const seasonEpisodePatterns = [
                 // S01E01, S1E1
@@ -122,8 +122,8 @@ torrent.on('metadata', () => {
                 /S(\d+)\.E(\d+)/i,
                 // 1x01, 01x01
                 /(\d+)x(\d+)/i,
-                // Серия 1, Episode 1
-                /(?:Серия|Episode)\s*(\d+)/i,
+                // Series 1, Episode 1
+                /(?:Series|Episode)\s*(\d+)/i,
             ];
 
             for (let i = 0; i < torrent.files.length; i++) {
@@ -138,16 +138,16 @@ torrent.on('metadata', () => {
                 // Try each pattern for exact season/episode match
                 for (const pattern of seasonEpisodePatterns) {
                     const fileMatch = fileName.match(pattern);
-                    
+
                     if (fileMatch) {
                         const fileSeason = parseInt(fileMatch[1]);
                         const fileEpisode = parseInt(fileMatch[2]);
 
-                        console.log(`🔍 Проверка: ${file.name} -> S${fileSeason}E${fileEpisode} (ищем S${season}E${episode})`);
+                        console.log(`Checking: ${file.name} -> S${fileSeason}E${fileEpisode} (looking for S${season}E${episode})`);
 
                         // Exact match for both season and episode (S01E01 != S01E10)
                         if (fileSeason === season && fileEpisode === episode) {
-                            console.log(`✅ Найдено точное совпадение: ${file.name}`);
+                            console.log(`Exact match found: ${file.name}`);
                             videoFile = file;
                             fileIndex = i;
                             maxSize = file.length;
@@ -160,15 +160,15 @@ torrent.on('metadata', () => {
         }
 
         if (!videoFile) {
-            console.log(`⚠️ Файл с паттерном не найден, берём первый видеофайл`);
-            console.log(`📁 Доступные файлы в торренте:`);
+            console.log(`File with pattern not found, using first video file`);
+            console.log(`Files available in torrent:`);
             torrent.files.forEach((file, i) => {
                 console.log(`   [${i}] ${file.name} (${(file.length / 1024 / 1024).toFixed(1)} MB)`);
             });
         }
     }
 
-    // Если видео не найдено по паттерну, берём самый большой файл
+    // If video not found by pattern, use largest file
     if (!videoFile) {
         for (let i = 0; i < torrent.files.length; i++) {
             const file = torrent.files[i];
@@ -181,7 +181,7 @@ torrent.on('metadata', () => {
         }
     }
 
-    // Если видео не найдено, берём самый большой файл
+    // If video still not found, use largest file
     if (!videoFile) {
         for (let i = 0; i < torrent.files.length; i++) {
             const file = torrent.files[i];
@@ -194,56 +194,56 @@ torrent.on('metadata', () => {
     }
 
     if (!videoFile) {
-        console.error('❌ Видеофайл не найден!');
+        console.error('Video file not found!');
         client.destroy();
         process.exit(1);
     }
 
-    console.log(`\n🎬 Видеофайл: ${videoFile.name}`);
+    console.log(`\nVideo file: ${videoFile.name}`);
     console.log(`Playing: ${videoFile.name}`);  // For backend parsing
-    console.log(`📏 Размер: ${(videoFile.length / 1024 / 1024 / 1024).toFixed(2)} GB`);
-    console.log(`📁 Индекс файла: ${fileIndex}`);
+    console.log(`Size: ${(videoFile.length / 1024 / 1024 / 1024).toFixed(2)} GB`);
+    console.log(`File index: ${fileIndex}`);
 
-    // 🔥 ВАЖНО: Сбрасываем загрузку ВСЕГО торрента, затем выбираем только 1 файл
-    console.log(`\n📥 Загружаем ТОЛЬКО файл ${fileIndex}, остальные отменяем...`);
-    
-    // Сначала deselect ВСЕГО торрента (priorities: 0 = не загружать)
+    // IMPORTANT: Reset torrent download, then select only 1 file
+    console.log(`\nDownloading ONLY file ${fileIndex}, canceling others...`);
+
+    // First deselect entire torrent (priorities: 0 = don't download)
     torrent.deselect(0, torrent.pieces.length - 1, 0);
-    console.log(`   ❌ Весь торрент отменён`);
-    
-    // Затем select только нужного файла с высоким приоритетом
+    console.log(`   Entire torrent canceled`);
+
+    // Then select only needed file with high priority
     videoFile.select(10); // Priority 10 (highest)
-    console.log(`   ✅ [${fileIndex}] ${videoFile.name} - ЗАГРУЖАЕМ (приоритет 10)`);
-    
-    // Логируем все файлы для отладки
-    console.log(`\n📁 Список файлов:`);
+    console.log(`   [${fileIndex}] ${videoFile.name} - DOWNLOADING (priority 10)`);
+
+    // Log all files for debugging
+    console.log(`\nFile list:`);
     torrent.files.forEach((file, i) => {
-        const isSelected = (i === fileIndex) ? '✅ ЗАГРУЖАЕМ' : '❌ ОТМЕНЕНО';
+        const isSelected = (i === fileIndex) ? 'DOWNLOADING' : 'CANCELED';
         console.log(`   [${i}] ${file.name} (${(file.length / 1024 / 1024).toFixed(1)} MB) - ${isSelected}`);
     });
 
-    // Запускаем сервер сразу после получения метаданных
+    // Start server immediately after metadata received
     startStreaming();
 });
 
 torrent.on('error', (err) => {
-    console.error(`\n❌ Ошибка торрента: ${err.message}`);
-    console.error('💡 Возможные причины:');
-    console.error('   - Нет сидов (0 seeders)');
-    console.error('   - Торрент мёртвый');
-    console.error('   - Проблемы с подключением');
+    console.error(`\nTorrent error: ${err.message}`);
+    console.error('Possible causes:');
+    console.error('   - No seeders (0 seeders)');
+    console.error('   - Dead torrent');
+    console.error('   - Connection issues');
     process.exit(1);
 });
 
 // Timeout for metadata (60 seconds)
 const metadataTimeout = setTimeout(() => {
     if (!videoFile) {
-        console.error('\n⏱️ Таймаут получения метаданных (60с)');
-        console.error('💡 Торрент не может получить метаданные');
-        console.error('💡 Проверьте:');
-        console.error('   - Наличие сидов (seeders)');
-        console.error('   - Подключение к интернету');
-        console.error('   - Работает ли трекер');
+        console.error('\nMetadata timeout (60s)');
+        console.error('Torrent cannot get metadata');
+        console.error('Check:');
+        console.error('   - Seeder availability');
+        console.error('   - Internet connection');
+        console.error('   - Tracker status');
         client.destroy();
         process.exit(1);
     }
@@ -253,10 +253,10 @@ function startStreaming() {
     if (serverStarted || !videoFile) return;
     serverStarted = true;
 
-    // Создаём HTTP сервер для стриминга
+    // Create HTTP server for streaming
     const server = http.createServer((req, res) => {
         const urlPath = req.url.replace(/^\//, '');
-        
+
         if (urlPath !== String(fileIndex)) {
             res.writeHead(404);
             res.end('Not found');
@@ -307,53 +307,62 @@ function startStreaming() {
 
     server.on('error', (err) => {
         if (err.code === 'EADDRINUSE') {
-            console.log(`\n⚠️ Порт ${PORT} занят`);
+            console.log(`\nPort ${PORT} is busy`);
         }
     });
 
     server.listen(PORT, () => {
         const actualPort = server.address().port;
-        console.log(`\n🌐 Сервер запущен: http://localhost:${actualPort}`);
+        console.log(`\nServer started: http://localhost:${actualPort}`);
         const streamUrl = `http://localhost:${actualPort}/${fileIndex}`;
-        console.log(`\n📺 URL потока: ${streamUrl}`);
+        console.log(`\nStream URL: ${streamUrl}`);
 
-        // Ждём накопления буфера и запускаем mpv
+        // Wait for buffer to accumulate and launch mpv
         let checkCount = 0;
         const checkBuffer = setInterval(() => {
             checkCount++;
             const downloaded = torrent.downloaded;
             const progress = torrent.progress * 100;
-            
-            // Пробуем запустить MPV при разных условиях:
-            // 1. Загружено > 20MB (быстрый старт)
-            // 2. Прогресс > 3% (для больших файлов)
-            // 3. После 3-й проверки (3 секунды)
-            // 4. Таймаут 8 секунд
-            if (downloaded > 20 * 1024 * 1024 || progress > 3 || checkCount >= 3) {
+
+            // Log statistics for frontend (parsing in torrent_manager.py)
+            const speed = torrent.downloadSpeed;
+            const peers = torrent.numPeers;
+            const downloadedMB = (downloaded / 1024 / 1024).toFixed(1);
+            const speedMB = (speed / 1024 / 1024).toFixed(2);
+            console.log(`\nProgress: ${progress.toFixed(1)}% | Downloaded ${downloadedMB} MB | Peers: ${peers} | Speed ${speedMB} MB/s`);
+
+            // Try to launch MPV under different conditions:
+            // 1. Downloaded > 10MB (fast start)
+            // 2. Progress > 1% (for large files)
+            // 3. After 2nd check (1 second)
+            // 4. Timeout 5 seconds
+            if (downloaded > 10 * 1024 * 1024 || progress > 1 || checkCount >= 2) {
                 clearInterval(checkBuffer);
-                console.log(`\n🎬 Условие запуска: загружено ${(downloaded / 1024 / 1024).toFixed(1)} MB, прогресс ${progress.toFixed(1)}%, проверка #${checkCount}`);
+                console.log(`\nLaunch condition met: downloaded ${(downloaded / 1024 / 1024).toFixed(1)} MB, progress ${progress.toFixed(1)}%, check #${checkCount}`);
                 launchMpv(streamUrl, server);
             }
-        }, 500); // Проверяем каждые 500мс
+        }, 500); // Check every 500ms
 
-        // Таймаут 8 секунд - принудительный запуск
+        // Timeout 5 seconds - force launch
         setTimeout(() => {
             clearInterval(checkBuffer);
             if (!mpvLaunched) {
-                console.log(`\n🎬 Принудительный запуск по таймауту (8с)`);
+                console.log(`\nForce launch by timeout (5s)`);
                 launchMpv(streamUrl, server);
             }
-        }, 8000);
+        }, 5000);
     });
 
-    // Статистика
+    // Statistics - update every 500ms for frontend
+    // Add newline at start to separate from MPV output
     setInterval(() => {
         const speed = torrent.downloadSpeed;
         const peers = torrent.numPeers;
         const progress = (torrent.progress * 100).toFixed(1);
         const downloaded = (torrent.downloaded / 1024 / 1024).toFixed(1);
-        process.stdout.write(`\r📊 Прогресс: ${progress}% | ⬇ ${downloaded} MB | 📶 Пиров: ${peers} | ⚡ ${(speed / 1024 / 1024).toFixed(2)} MB/s   `);
-    }, 1000);
+        const speedMB = (speed / 1024 / 1024).toFixed(2);
+        console.log(`\nProgress: ${progress}% | Downloaded ${downloaded} MB | Peers: ${peers} | Speed ${speedMB} MB/s`);
+    }, 500);
 }
 
 let mpvLaunched = false;
@@ -365,8 +374,9 @@ function launchMpv(streamUrl, server) {
     if (mpvLaunched) return;
     mpvLaunched = true;
 
-    console.log('\n\n🎬 Запуск MPV...');
+    console.log('\n\nLaunching MPV...');
 
+    // MPV inherits stdio so it outputs directly to terminal/log
     mpvProcess = spawn('mpv', [
         streamUrl,
         `--title=${videoFile.name}`,
@@ -375,65 +385,65 @@ function launchMpv(streamUrl, server) {
         '--keep-open=yes',
         '--input-ipc-server=/tmp/mpv-ipc.sock'
     ], {
-        stdio: 'inherit',
+        stdio: 'inherit',  // MPV outputs directly
         detached: false
     });
 
     mpvProcess.on('error', (err) => {
-        console.error(`\n❌ Ошибка MPV: ${err.message}`);
-        console.error('Установите MPV: sudo apt install mpv');
+        console.error(`\nMPV error: ${err.message}`);
+        console.error('Install MPV: sudo apt install mpv');
         server.close();
         cleanup();
     });
 
     mpvProcess.on('exit', (code) => {
-        console.log('\n\n👋 MPV закрыт');
-        
-        // Проверяем % просмотра перед удалением
+        console.log('\n\nMPV closed');
+
+        // Check view percentage before deleting
         const downloadPath = path.join('./downloads', videoFile.path);
         const watchPercent = totalDuration > 0 ? (lastPlaybackPosition / totalDuration * 100) : 0;
-        
-        console.log(`📊 Просмотрено: ${watchPercent.toFixed(1)}% (${(lastPlaybackPosition/60).toFixed(1)} мин из ${(totalDuration/60).toFixed(1)} мин)`);
-        
-        // Если просмотрено >90% - удаляем файл
+
+        console.log(`Watched: ${watchPercent.toFixed(1)}% (${(lastPlaybackPosition/60).toFixed(1)} min of ${(totalDuration/60).toFixed(1)} min)`);
+
+        // If watched >90%, delete file
         if (watchPercent > 90) {
-            console.log(`\n🗑️ Файл просмотрен >90%, удаляем...`);
+            console.log(`\nFile watched >90%, deleting...`);
             try {
                 if (fs.existsSync(downloadPath)) {
                     fs.unlinkSync(downloadPath);
-                    console.log(`✅ Удалено: ${downloadPath}`);
-                    
-                    // Пробуем удалить пустые папки
+                    console.log(`Deleted: ${downloadPath}`);
+
+                    // Try to delete empty folders
                     const dirPath = path.dirname(downloadPath);
                     try {
                         const files = fs.readdirSync(dirPath);
                         if (files.length === 0) {
                             fs.rmdirSync(dirPath);
-                            console.log(`✅ Удалена пустая папка: ${dirPath}`);
+                            console.log(`Deleted empty folder: ${dirPath}`);
                         }
                     } catch (e) {
-                        // Папка не пустая или ошибка
+                        // Folder not empty or error
                     }
                 } else {
-                    console.log(`⚠️ Файл не найден: ${downloadPath}`);
+                    console.log(`File not found: ${downloadPath}`);
                 }
             } catch (err) {
-                console.error(`❌ Ошибка удаления: ${err.message}`);
+                console.error(`Delete error: ${err.message}`);
             }
         } else {
-            console.log(`ℹ️ Файл сохранён (просмотрено ${watchPercent.toFixed(1)}%)`);
+            console.log(`File saved (watched ${watchPercent.toFixed(1)}%)`);
         }
-        
+
         server.close();
         cleanup();
     });
 }
 
 function cleanup() {
-    console.log('\n🧹 Остановка...');
+    console.log('\nCleaning up...');
     clearTimeout(metadataTimeout);
     client.destroy(() => {
-        console.log('✅ WebTorrent остановлен');
+        console.log('WebTorrent stopped');
         process.exit(0);
     });
 }

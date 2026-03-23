@@ -413,7 +413,6 @@
             <li><a href="/"><i class="fas fa-home"></i></a></li>
             <li><a href="/favorites"><i class="fas fa-star"></i></a></li>
             <li><a href="/history"><i class="fas fa-history"></i></a></li>
-            <li><a href="#"><i class="fas fa-cog"></i></a></li>
         </ul>
     </nav>
 
@@ -1010,9 +1009,23 @@
 
             statusCheckInterval = setInterval(() => {
                 fetch('/api/torrent/status')
-                .then(r => r.json())
+                .then(r => {
+                    // Check content type
+                    const contentType = r.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        console.error('[Status] Response is not JSON:', r.status, r.statusText);
+                        throw new Error('Server returned non-JSON response: ' + r.status);
+                    }
+                    return r.json();
+                })
                 .then(data => {
                     console.log('[Status]', data);
+
+                    // Check for server error
+                    if (data.status === 'error') {
+                        console.error('[Status] Server error:', data.error);
+                        return;
+                    }
 
                     // Update loading animation status
                     const loadingAnimation = document.getElementById('loadingAnimation');
@@ -1033,6 +1046,14 @@
                     // Close window if MPV was playing and now stopped
                     if (wasPlaying && !data.playing) {
                         console.log('[Player] MPV closed - closing window');
+                        showNotification('Воспроизведение завершено', 'info');
+                        closePlayer();
+                        return;
+                    }
+
+                    // Also close if status is explicitly 'stopped'
+                    if (data.status === 'stopped' && wasPlaying) {
+                        console.log('[Player] Status stopped - closing window');
                         closePlayer();
                         return;
                     }
@@ -1051,7 +1072,19 @@
                     let avTotal = '';
                     let isPaused = false;
 
-                    if (data.av_line) {
+                    // Use direct values from API if available
+                    if (data.av_percent !== undefined) {
+                        avPercent = parseInt(data.av_percent);
+                    }
+                    if (data.av_current) {
+                        avCurrent = data.av_current;
+                    }
+                    if (data.av_total) {
+                        avTotal = data.av_total;
+                    }
+                    
+                    // Fallback to parsing av_line if direct values not available
+                    if (!avCurrent && !avTotal && data.av_line) {
                         // Parse "AV: 00:02:15 / 00:43:15 (5%)"
                         const avMatch = data.av_line.match(/AV:\s*(\d+:\d+:\d+)\s*\/\s*(\d+:\d+:\d+)\s*\((\d+)%\)/);
                         if (avMatch) {
@@ -1143,7 +1176,7 @@
                 clearInterval(progressInterval);
                 progressInterval = null;
             }
-            // Note: Progress is saved by popcorn-mpv server directly
+            // Note: Progress is saved by torrent streaming server directly
             // We don't have access to video element since it's in MPV
         }
 

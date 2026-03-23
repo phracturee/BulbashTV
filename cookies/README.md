@@ -1,101 +1,101 @@
-# Cookie файлы для авторизации на трекерах
+# Cookie Files for Tracker Authorization
 
-## Как получить cookies
+## How to Get Cookies
 
-### Способ 1: Через браузер (рекомендуется)
+### Method 1: Via Browser (Recommended)
 
-1. **Войдите в аккаунт** на rutracker.org или nnmclub.to
-2. **Откройте DevTools** (F12 или Ctrl+Shift+I)
-3. Перейдите во вкладку **Application** (Приложение)
-4. В левом меню выберите **Storage** → **Cookies** → сайт
-5. **Скопируйте нужные cookies** (см. список ниже)
-6. **Вставьте в JSON файл** в папку `cookies/`
+1. **Log in** to rutracker.org or nnmclub.to
+2. **Open DevTools** (F12 or Ctrl+Shift+I)
+3. Go to **Application** tab
+4. In the left menu select **Storage** → **Cookies** → site
+5. **Copy required cookies** (see list below)
+6. **Paste into JSON file** in `cookies/` folder
 
-### Способ 2: Через расширение
+### Method 2: Via Extension
 
-1. Установите расширение **"Cookie-Editor"** или **"EditThisCookie"**
-2. Войдите в аккаунт на трекере
-3. Нажмите на иконку расширения
-4. Нажмите **Export** (Экспорт)
-5. Сохраните в файл `cookies/[tracker]_cookies.json`
+1. Install extension **"Cookie-Editor"** or **"EditThisCookie"**
+2. Log in to the tracker
+3. Click on the extension icon
+4. Click **Export**
+5. Save to `cookies/[tracker]_cookies.json`
 
-## Необходимые cookies
+## Required Cookies
 
-### Для Rutracker (rutracker_cookies.json):
+### For Rutracker (rutracker_cookies.json):
 ```json
 [
   {
     "name": "bb_session",
-    "value": "ваш_токен",
+    "value": "your_token",
     "domain": ".rutracker.org"
   },
   {
     "name": "bb_uid",
-    "value": "ваш_id",
+    "value": "your_id",
     "domain": ".rutracker.org"
   },
   {
     "name": "bb_hash",
-    "value": "ваш_hash",
+    "value": "your_hash",
     "domain": ".rutracker.org"
   }
 ]
 ```
 
-### Для NnmClub (nnmclub_cookies.json):
+### For NnmClub (nnmclub_cookies.json):
 ```json
 [
   {
     "name": "phpbb2mysql_4_sid",
-    "value": "ваш_session_id",
+    "value": "your_session_id",
     "domain": "nnmclub.to"
   },
   {
     "name": "opt_js_user_id",
-    "value": "ваш_id",
+    "value": "your_id",
     "domain": "nnmclub.to"
   },
   {
     "name": "opt_js_user_pass",
-    "value": "ваш_pass_hash",
+    "value": "your_pass_hash",
     "domain": "nnmclub.to"
   }
 ]
 ```
 
-## Важно!
+## Important!
 
-- Cookies действуют **ограниченное время** (обычно несколько месяцев)
-- При выходе из аккаунта в браузере cookies станут **недействительными**
-- **Не коммитьте cookies в git!** Добавьте в `.gitignore`:
+- Cookies are valid for a **limited time** (usually several months)
+- When you log out in the browser, cookies become **invalid**
+- **Do not commit cookies to git!** Add to `.gitignore`:
   ```
   cookies/*_cookies.json
   ```
 
-## Как работает автоматическая авторизация
+## How Automatic Authorization Works
 
-1. Парсер **сначала пытается загрузить cookies** из файла
-2. Если cookies загружены, проверяет их **валидность** (ищет ссылку "Выход")
-3. Если cookies **валидны** → использует их для поиска
-4. Если cookies **невалидны или отсутствуют** → пытается войти по логину/паролю
-5. Если нет ни cookies ни логина → выводит сообщение об ошибке
+1. Parser **first tries to load cookies** from file
+2. If cookies are loaded, check their **validity** (look for "Logout" link)
+3. If cookies are **valid** → use them for search
+4. If cookies are **invalid or missing** → try to login with username/password
+5. If no cookies and no login → display error message
 
-## Проверка
+## Verification
 
-После добавления cookies запустите тест:
+After adding cookies, run test:
 ```bash
 python -c "from parsers.rutracker import RutrackerSpider; s = RutrackerSpider(); print('Cookies loaded:', len(s.session.cookies))"
 ```
 
-### Если видите: "[Rutracker] No login credentials provided and no valid cookies"
+### If you see: "[Rutracker] No login credentials provided and no valid cookies"
 
-Это значит:
-- ❌ Cookies не загружены (файл отсутствует)
-- ❌ Cookies загружены но **невалидны** (устарели)
-- ❌ Нет логина/пароля в config.py
+This means:
+- Cookies are not loaded (file missing)
+- Cookies are loaded but **invalid** (expired)
+- No username/password in config.py
 
-**Решение:** Обновите cookies через браузер (см. инструкцию выше)
+**Solution:** Update cookies via browser (see instructions above)
 
-### Если видите: "[Rutracker] Cookies are valid, already logged in"
+### If you see: "[Rutracker] Cookies are valid, already logged in"
 
-✅ Всё работает! Поиск будет использовать cookies.
+Everything is working! Search will use cookies.

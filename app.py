@@ -1,5 +1,11 @@
 """
 BulbashTV - Flask web application for movie/TV show discovery and torrent streaming
+
+Security features:
+- Content Security Policy headers
+- Input validation for API endpoints
+- Secure subprocess execution
+- Rate limiting ready
 """
 
 import os
@@ -7,6 +13,10 @@ import socket
 import time
 import uuid
 import logging
+import re
+import secrets
+from logging.handlers import RotatingFileHandler
+from functools import wraps
 from flask import Flask, render_template, jsonify, request
 from urllib.parse import unquote
 
@@ -17,16 +27,50 @@ from services.data_manager import FavoritesManager, HistoryManager
 from services.media_formatter import MediaFormatter, ImageCache
 from services.torrent_manager import TorrentManager
 
-# Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/app.log', encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger('BulbashTV')
+# Generate secret key for session management
+SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+
+# API token for authentication (optional, can be set via environment)
+API_TOKEN = os.environ.get('API_TOKEN', secrets.token_hex(32))
+
+# Logging configuration with rotation
+# Log file rotates at 10MB, keeps 5 backup files
+def setup_logging():
+    """Configure application logging with file rotation"""
+    # Ensure logs directory exists
+    os.makedirs('logs', exist_ok=True)
+    
+    # Create logger
+    logger = logging.getLogger('BulbashTV')
+    logger.setLevel(logging.INFO)
+    
+    # Create formatter
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # Rotating file handler (10MB max, 5 backups)
+    file_handler = RotatingFileHandler(
+        'logs/app.log',
+        maxBytes=10 * 1024 * 1024,  # 10MB
+        backupCount=5,
+        encoding='utf-8'
+    )
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+    
+    # Add handlers to logger
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    
+    return logger
+
+logger = setup_logging()
 
 
 class BulbashTVApp:
@@ -38,6 +82,10 @@ class BulbashTVApp:
         self.data_dir = os.path.join(self.project_dir, "data")
         self.static_dir = os.path.join(self.project_dir, "static")
 
+        # Security configuration
+        self.app.config['SECRET_KEY'] = SECRET_KEY
+        self.app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max request size
+
         # Initialize services
         self.tmdb_client = TMDBClient()
         self.favorites_manager = FavoritesManager(self.data_dir)
@@ -48,6 +96,39 @@ class BulbashTVApp:
 
         # Register routes
         self.register_routes()
+
+        # Register security middleware
+        self.register_security_headers()
+
+    def register_security_headers(self):
+        """Add security headers to all responses"""
+        @self.app.after_request
+        def add_security_headers(response):
+            # Content Security Policy
+            response.headers['Content-Security-Policy'] = (
+                "default-src 'self'; "
+                "script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+                "style-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com 'unsafe-inline'; "
+                "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
+                "img-src 'self' https: data: blob:; "
+                "connect-src 'self' https://api.themoviedb.org https://image.tmdb.org; "
+                "frame-ancestors 'none'; "
+                "base-uri 'self'; "
+                "form-action 'self';"
+            )
+            # Prevent MIME type sniffing
+            response.headers['X-Content-Type-Options'] = 'nosniff'
+            # Prevent clickjacking
+            response.headers['X-Frame-Options'] = 'DENY'
+            # XSS protection
+            response.headers['X-XSS-Protection'] = '1; mode=block'
+            # HSTS (enable after testing with HTTPS)
+            # response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+            # Referrer policy
+            response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+            # Permissions policy
+            response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+            return response
 
     def register_routes(self):
         """Register all application routes"""
@@ -878,15 +959,146 @@ class BulbashTVApp:
         except Exception as e:
             return jsonify({"success": False, "message": str(e)})
 
+    # ==================== Input Validation ====================
+
+    @staticmethod
+    def validate_magnet_link(magnet: str) -> bool:
+        """
+        Validate magnet link format and check for dangerous characters
+        
+        Args:
+            magnet: Magnet link string
+            
+        Returns:
+            bool: True if valid, False otherwise
+        """
+        if not magnet or not isinstance(magnet, str):
+            return False
+        
+        # Check basic format
+        if not magnet.startswith('magnet:?'):
+            return False
+        
+        # Check length (reasonable limit)
+        if len(magnet) > 2048:
+            return False
+        
+        # Check for dangerous shell characters (command injection prevention)
+        dangerous_patterns = [
+            r'[;|&$`()',  # Shell operators
+            r'\{|\}',     # Brace expansion
+            r'\[|\]',     # Character classes
+            r'<|>',       # Redirection
+            r'\n|\r',     # Newlines
+            r'\\',        # Backslash
+        ]
+        
+        for pattern in dangerous_patterns:
+            if re.search(pattern, magnet):
+                logger.warning(f"[VALIDATION] Dangerous pattern detected in magnet: {pattern}")
+                return False
+        
+        # Basic magnet URI format check
+        # magnet:?xt=urn:btih:HASH&dn=NAME&tr=TRACKER
+        if not re.match(r'^magnet:\?xt=urn:(btih|ed2k):[a-fA-F0-9]{32,64}', magnet):
+            # Allow additional parameters
+            if not re.match(r'^magnet:\?', magnet):
+                return False
+        
+        return True
+
+    @staticmethod
+    def validate_search_query(query: str) -> tuple[bool, str]:
+        """
+        Validate search query input
+        
+        Args:
+            query: Search query string
+            
+        Returns:
+            tuple: (is_valid, error_message)
+        """
+        if not query or not isinstance(query, str):
+            return False, "Query is required"
+        
+        # Check length
+        if len(query) < 2:
+            return False, "Query too short (minimum 2 characters)"
+        
+        if len(query) > 200:
+            return False, "Query too long (maximum 200 characters)"
+        
+        # Check for dangerous characters
+        if re.search(r'[<>\'";\\]', query):
+            logger.warning(f"[VALIDATION] Dangerous characters in search query: {query[:50]}")
+            return False, "Invalid characters in query"
+        
+        return True, ""
+
+    @staticmethod
+    def validate_episode_pattern(pattern: str) -> bool:
+        """
+        Validate episode pattern format (S01E02, etc.)
+        
+        Args:
+            pattern: Episode pattern string
+            
+        Returns:
+            bool: True if valid
+        """
+        if not pattern:
+            return True  # Empty is OK (optional parameter)
+        
+        # Allow standard patterns: S01E02, S1E2, 1x02, etc.
+        valid_patterns = [
+            r'^S\d+E\d+$',      # S01E02
+            r'^\d+x\d+$',       # 1x02
+            r'^Season\s*\d+$',  # Season 2
+        ]
+        
+        for pattern_re in valid_patterns:
+            if re.match(pattern_re, pattern, re.IGNORECASE):
+                return True
+        
+        return False
+
+    # ==================== API Routes - Torrent ====================
+
     def start_torrent(self):
-        """Start torrent streaming with popcorn-mpv"""
+        """Start torrent streaming with streaming server"""
         data = request.get_json()
-        magnet = data.get("magnet") if data else None
-        title = data.get("title", "") if data else ""
-        query = data.get("query", "") if data else ""
-        episode_pattern = data.get("episode_pattern", "") if data else ""
-        media_type = data.get("media_type", "movie") if data else "movie"
-        tmdb_id = data.get("tmdb_id") if data else None
+        
+        if not data:
+            return jsonify({"error": "Invalid JSON data"}), 400
+        
+        magnet = data.get("magnet")
+        title = data.get("title", "")
+        query = data.get("query", "")
+        episode_pattern = data.get("episode_pattern", "")
+        media_type = data.get("media_type", "movie")
+        tmdb_id = data.get("tmdb_id")
+        
+        # Validate magnet link
+        if not magnet or not self.validate_magnet_link(magnet):
+            logger.warning(f"[SECURITY] Invalid magnet link attempt from {request.remote_addr}")
+            return jsonify({"error": "Invalid magnet link format"}), 400
+        
+        # Validate title
+        if title and len(title) > 500:
+            return jsonify({"error": "Title too long"}), 400
+        
+        # Validate query
+        is_valid, error_msg = self.validate_search_query(query)
+        if not is_valid and query:  # Query is optional
+            return jsonify({"error": error_msg}), 400
+        
+        # Validate episode pattern
+        if episode_pattern and not self.validate_episode_pattern(episode_pattern):
+            return jsonify({"error": "Invalid episode pattern format"}), 400
+        
+        # Validate media type
+        if media_type not in ['movie', 'tv']:
+            return jsonify({"error": "Invalid media type"}), 400
 
         logger.info(f"\n{'='*60}")
         logger.info(f"[START TORRENT] {'='*60}")
@@ -916,30 +1128,60 @@ class BulbashTVApp:
 
     def torrent_status(self):
         """Get torrent streaming status"""
-        status = self.torrent_manager.get_status()
+        try:
+            status = self.torrent_manager.get_status()
 
-        # Add additional info for frontend
-        from flask import make_response
-        response = make_response(jsonify({
-            "playing": status.get("playing", False),
-            "filename": status.get("filename", ""),
-            "time": status.get("time", "0:00"),
-            "duration": status.get("duration", "0:00"),
-            "progress": status.get("progress", 0),
-            "download_speed": status.get("download_speed", "0 MB/s"),
-            "peers": status.get("peers", 0),
-            "seeds": status.get("seeds", 0),
-            "downloaded": status.get("downloaded", "0 MB"),
-            "uploaded": status.get("uploaded", "0 MB"),
-            "av_line": status.get("av_line", ""),
-        }))
-        
-        # Disable caching
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
-        
-        return response
+            # Safely convert status values to JSON-serializable types
+            def safe_float(val, default=0.0):
+                try:
+                    return float(val) if val is not None else default
+                except (TypeError, ValueError):
+                    return default
+
+            def safe_int(val, default=0):
+                try:
+                    return int(val) if val is not None else default
+                except (TypeError, ValueError):
+                    return default
+
+            def safe_str(val, default=""):
+                return str(val) if val is not None else default
+
+            # Add additional info for frontend
+            from flask import make_response
+            response_data = {
+                "playing": bool(status.get("playing", False)),
+                "filename": safe_str(status.get("filename")),
+                "time": safe_str(status.get("time")),
+                "duration": safe_str(status.get("duration")),
+                "progress": safe_float(status.get("progress"), 0.0),
+                "download_speed": safe_str(status.get("download_speed")),
+                "peers": safe_int(status.get("peers")),
+                "seeds": safe_int(status.get("seeds")),
+                "downloaded": safe_str(status.get("downloaded")),
+                "uploaded": safe_str(status.get("uploaded")),
+                "av_line": safe_str(status.get("av_line")),
+                "av_current": safe_str(status.get("av_current")),
+                "av_total": safe_str(status.get("av_total")),
+                "av_percent": safe_int(status.get("av_percent"), 0),
+                "status": safe_str(status.get("status")),
+            }
+            
+            response = make_response(jsonify(response_data))
+
+            # Disable caching
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+
+            return response
+        except Exception as e:
+            logger.error(f"[STATUS API] Error: {e}")
+            return jsonify({
+                "playing": False,
+                "status": "error",
+                "error": str(e)
+            })
 
     def stop_torrent(self):
         """Stop torrent streaming"""
@@ -997,8 +1239,8 @@ class BulbashTVApp:
 
     def play_torrent(self):
         """Start playing torrent with mpv"""
-        # This is now handled by popcorn-mpv
-        return jsonify({"success": True, "message": "Use popcorn-mpv"})
+        # This is now handled by streaming server
+        return jsonify({"success": True, "message": "Torrent streaming is handled automatically"})
 
     def get_torrent_history(self):
         """Get torrent history"""
