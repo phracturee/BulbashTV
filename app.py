@@ -986,16 +986,12 @@ class BulbashTVApp:
             return False
         
         # Check for dangerous shell characters (command injection prevention)
-        dangerous_patterns = [
-            r'[;|&$`()\[\]{}]',  # Shell operators and special chars
-            r'<>',                # Redirection
-            r'\n|\r',             # Newlines
-            r'\\\\',              # Backslash
-        ]
+        # Using simple string checks instead of regex to avoid issues
+        dangerous_chars = [';', '|', '&', '$', '`', '(', ')', '[', ']', '{', '}', '<', '>', '\\', '\n', '\r']
         
-        for pattern in dangerous_patterns:
-            if re.search(pattern, magnet):
-                logger.warning(f"[VALIDATION] Dangerous pattern detected in magnet: {pattern}")
+        for char in dangerous_chars:
+            if char in magnet:
+                logger.warning(f"[VALIDATION] Dangerous character detected in magnet: '{char}'")
                 return False
         
         # Basic magnet URI format check
