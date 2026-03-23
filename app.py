@@ -987,12 +987,10 @@ class BulbashTVApp:
         
         # Check for dangerous shell characters (command injection prevention)
         dangerous_patterns = [
-            r'[;|&$`()',  # Shell operators
-            r'\{|\}',     # Brace expansion
-            r'\[|\]',     # Character classes
-            r'<|>',       # Redirection
-            r'\n|\r',     # Newlines
-            r'\\',        # Backslash
+            r'[;|&$`()\[\]{}]',  # Shell operators and special chars
+            r'<>',                # Redirection
+            r'\n|\r',             # Newlines
+            r'\\\\',              # Backslash
         ]
         
         for pattern in dangerous_patterns:
