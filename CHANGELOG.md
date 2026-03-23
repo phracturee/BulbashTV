@@ -78,9 +78,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [ ] Automated testing suite
 - [ ] CI/CD pipeline integration
 - [ ] WebSocket support for real-time status updates
-- [ ] Subtitle support for video playback
-- [ ] Chromecast/AirPlay support
-- [ ] Mobile app (React Native/Flutter)
 
 ### Under Consideration
 - [ ] Multi-user support with profiles
@@ -88,7 +85,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [ ] Recommendations based on watch history
 - [ ] Social features (share favorites)
 - [ ] Plugin system for additional trackers
-- [ ] API documentation (Swagger/OpenAPI)
 
 ---
 
