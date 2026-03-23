@@ -78,6 +78,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [ ] Automated testing suite
 - [ ] CI/CD pipeline integration
 - [ ] WebSocket support for real-time status updates
+- [ ] Logo/branding design
+- [ ] LostFilm parser integration
+- [ ] NonameLL parser integration
 
 ### Under Consideration
 - [ ] Multi-user support with profiles
