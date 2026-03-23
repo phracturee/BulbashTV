@@ -300,7 +300,7 @@ if __name__ == '__main__':
 **DO NOT** create public issues for security vulnerabilities.
 
 Instead:
-1. Email: phracture226@gmail.com
+1. Email: phracture266@gmail.com
 2. Include:
    - Description of vulnerability
    - Steps to reproduce
@@ -373,6 +373,6 @@ Closes #123
 
 Feel free to open an issue with the "question" label for any questions about contributing.
 
-For other inquiries, contact: phracture226@gmail.com
+For other inquiries, contact: phracture266@gmail.com
 
 Thank you for contributing to BulbashTV! 🎬
