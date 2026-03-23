@@ -80,7 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [ ] WebSocket support for real-time status updates
 - [ ] Logo/branding design
 - [ ] LostFilm parser integration
-- [ ] NonameLL parser integration
+- [ ] Noname parser integration
 
 ### Under Consideration
 - [ ] Multi-user support with profiles
