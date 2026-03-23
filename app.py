@@ -966,7 +966,7 @@ class BulbashTVApp:
     @staticmethod
     def validate_magnet_link(magnet: str) -> bool:
         """
-        Validate magnet link format and check for dangerous characters
+        Validate magnet link format
         
         Args:
             magnet: Magnet link string
@@ -984,22 +984,6 @@ class BulbashTVApp:
         # Check length (reasonable limit)
         if len(magnet) > 2048:
             return False
-        
-        # Check for dangerous shell characters (command injection prevention)
-        # Using simple string checks instead of regex to avoid issues
-        dangerous_chars = [';', '|', '&', '$', '`', '(', ')', '[', ']', '{', '}', '<', '>', '\\', '\n', '\r']
-        
-        for char in dangerous_chars:
-            if char in magnet:
-                logger.warning(f"[VALIDATION] Dangerous character detected in magnet: '{char}'")
-                return False
-        
-        # Basic magnet URI format check
-        # magnet:?xt=urn:btih:HASH&dn=NAME&tr=TRACKER
-        if not re.match(r'^magnet:\?xt=urn:(btih|ed2k):[a-fA-F0-9]{32,64}', magnet):
-            # Allow additional parameters
-            if not re.match(r'^magnet:\?', magnet):
-                return False
         
         return True
 
